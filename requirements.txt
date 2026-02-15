@@ -1,0 +1,16 @@
+customtkinter
+opencv-python
+pillow
+ultralytics
+torch
+torchvision
+torchaudio
+matplotlib
+pandas
+numpy
+transformers
+cryptography
+yt-dlp
+reportlab
+SoccerNet
+
