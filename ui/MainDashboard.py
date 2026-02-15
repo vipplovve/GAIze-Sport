@@ -29,7 +29,7 @@ class MainDashboard(ctk.CTkFrame):
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
         self.sidebar_frame.grid_rowconfigure(7, weight=1)
 
-        self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="🛡️ GameGuard",
+        self.logo_label = ctk.CTkLabel(self.sidebar_frame, text="🛡️ GAIze-Sport",
                                         font=ctk.CTkFont(size=18, weight="bold"),
                                         text_color="#2cc985")
         self.logo_label.grid(row=0, column=0, padx=20, pady=(20, 10))
@@ -158,7 +158,7 @@ class MainDashboard(ctk.CTkFrame):
         inner.place(relx=0.5, rely=0.5, anchor="center")
 
         ctk.CTkLabel(inner, text="🛡️", font=("Arial", 48)).pack(pady=(0, 5))
-        ctk.CTkLabel(inner, text="Welcome to GameGuard",
+        ctk.CTkLabel(inner, text="Welcome to GAIze-Sport",
                      font=("Roboto", 24, "bold"), text_color="#2cc985").pack(pady=(0, 10))
         ctk.CTkLabel(inner, text="Upload a video to get started, or explore the tools in the sidebar.",
                      font=("Roboto", 14), text_color="#a0a0a0").pack()

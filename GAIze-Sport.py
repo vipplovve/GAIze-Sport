@@ -7,7 +7,7 @@ class SportsAnalysisApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         
-        self.title("GameGuard — AI Sports Video Analysis")
+        self.title("GAIze-Sport — AI Sports Video Analysis")
         self.geometry("1100x700")
         
         setup_theme()

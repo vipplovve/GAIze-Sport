@@ -3,7 +3,7 @@ from .AppStyles import *
 
 
 class LoginScreen(ctk.CTkFrame):
-    """GameGuard login / landing screen with project description and auth."""
+    """GAIze-Sport login / landing screen with project description and auth."""
 
     def __init__(self, master, on_login_success, **kwargs):
         super().__init__(master, **kwargs)
@@ -19,7 +19,7 @@ class LoginScreen(ctk.CTkFrame):
         self.lbl_icon = ctk.CTkLabel(center, text="🛡️", font=("Segoe UI Emoji", 60))
         self.lbl_icon.pack(pady=(0, 2))
 
-        self.lbl_title = ctk.CTkLabel(center, text="GAMEGUARD",
+        self.lbl_title = ctk.CTkLabel(center, text="GAIze-Sport",
                                        font=("Roboto", 44, "bold"),
                                        text_color="#2cc985")
         self.lbl_title.pack(pady=(0, 3))
@@ -107,7 +107,7 @@ class LoginScreen(ctk.CTkFrame):
 
         # ── Footer ────────────────────────────────────────────
         libs_list = "PyTorch • Ultralytics • OpenCV • CustomTkinter • NumPy • Pandas • Matplotlib • Transformers • ReportLab • yt-dlp • Pillow"
-        self.lbl_footer = ctk.CTkLabel(center, text=f"© 2026 GameGuard  •  Major Project II\nPowered by: {libs_list}",
+        self.lbl_footer = ctk.CTkLabel(center, text=f"© 2026 GAIze-Sport  •  Major Project II\nPowered by: {libs_list}",
                                         font=("Roboto", 10),
                                         text_color="#555555")
         self.lbl_footer.pack(pady=(15, 5))
