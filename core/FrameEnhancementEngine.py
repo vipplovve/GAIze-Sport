@@ -3,8 +3,9 @@ import numpy as np
 import torch
 import os
 import sys
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'training', 'esrgan'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'training' / 'esrgan'))
 
 class FrameEnhancementEngine:
     def __init__(self, model_path="training/esrgan/checkpoints/esrgan_generator.pth", num_blocks=8):

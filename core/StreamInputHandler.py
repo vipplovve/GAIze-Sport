@@ -21,8 +21,8 @@ class StreamInputHandler:
             return None
 
         try:
-            cmd = f"yt-dlp -f b -g {url}"
-            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            cmd = ["yt-dlp", "-f", "b", "-g", url]
+            result = subprocess.run(cmd, capture_output=True, text=True)
             if result.returncode == 0:
                 stream_url = result.stdout.strip()
                 return stream_url

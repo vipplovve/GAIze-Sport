@@ -2,6 +2,7 @@ import os
 import random
 import numpy as np
 from PIL import Image
+from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
@@ -19,9 +20,10 @@ class DatasetLoader(Dataset):
         self.augment = augment
         
         valid_extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff'}
+        hr_path = Path(hr_dir)
         self.image_paths = [
-            os.path.join(hr_dir, f) for f in sorted(os.listdir(hr_dir))
-            if os.path.splitext(f)[1].lower() in valid_extensions
+            str(p) for p in sorted(hr_path.iterdir())
+            if p.is_file() and p.suffix.lower() in valid_extensions
         ]
         
         if len(self.image_paths) == 0:
@@ -68,8 +70,9 @@ class VideoFrameDataset(DatasetLoader):
     def extract_frames(video_path, output_dir, every_n_frames=5):
         import cv2
         
-        os.makedirs(output_dir, exist_ok=True)
-        cap = cv2.VideoCapture(video_path)
+        out_dir = Path(output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        cap = cv2.VideoCapture(str(video_path))
         
         frame_count = 0
         saved_count = 0
@@ -80,7 +83,7 @@ class VideoFrameDataset(DatasetLoader):
                 break
             
             if frame_count % every_n_frames == 0:
-                filename = os.path.join(output_dir, f"frame_{saved_count:06d}.png")
+                filename = str(out_dir / f"frame_{saved_count:06d}.png")
                 cv2.imwrite(filename, frame)
                 saved_count += 1
             
@@ -90,15 +93,15 @@ class VideoFrameDataset(DatasetLoader):
         return saved_count
 
 if __name__ == "__main__":
-    test_dir = "test_hr_images"
-    os.makedirs(test_dir, exist_ok=True)
+    test_dir = Path("test_hr_images")
+    test_dir.mkdir(parents=True, exist_ok=True)
     
     for i in range(5):
         img = Image.fromarray(np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8))
-        img.save(os.path.join(test_dir, f"test_{i}.png"))
+        img.save(str(test_dir / f"test_{i}.png"))
     
-    dataset = DatasetLoader(test_dir, hr_crop_size=128, scale_factor=4)
+    dataset = DatasetLoader(str(test_dir), hr_crop_size=128, scale_factor=4)
     lr, hr = dataset[0]
     
     import shutil
-    shutil.rmtree(test_dir)
+    shutil.rmtree(str(test_dir))

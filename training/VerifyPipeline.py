@@ -1,11 +1,12 @@
 import os
 import sys
 import numpy as np
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.join(BASE_DIR, "..")
-sys.path.insert(0, PROJECT_ROOT)
-sys.path.insert(0, os.path.join(BASE_DIR, "esrgan"))
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+sys.path.insert(0, str(BASE_DIR / "esrgan"))
 
 import torch
 import cv2
@@ -16,24 +17,27 @@ def verify_esrgan():
     
     from ESRGANModel import RRDBNet
     
-    model_path = os.path.join(BASE_DIR, "esrgan", "checkpoints", "esrgan_generator.pth")
-    if not os.path.exists(model_path):
+    model_path = BASE_DIR / "esrgan" / "checkpoints" / "esrgan_generator.pth"
+    if not model_path.exists():
         print(f"  SKIP: No model at {model_path}")
         return False
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = RRDBNet(num_blocks=8).to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(str(model_path), map_location=device))
     model.eval()
     
-    test_frame_dir = os.path.join(BASE_DIR, "esrgan", "data", "hr_frames")
+    test_frame_dir = BASE_DIR / "esrgan" / "data" / "hr_frames"
+    if not test_frame_dir.exists():
+        print("  SKIP: No test frame dir found")
+        return False
     test_frames = [f for f in os.listdir(test_frame_dir) if f.endswith(".png")]
     
     if not test_frames:
         print("  SKIP: No test frames found")
         return False
     
-    frame = cv2.imread(os.path.join(test_frame_dir, test_frames[0]))
+    frame = cv2.imread(str(test_frame_dir / test_frames[0]))
     h, w = frame.shape[:2]
     small = cv2.resize(frame, (w // 4, h // 4))
     
@@ -56,14 +60,14 @@ def verify_lstm():
     
     from core.ActionRecognitionEngine import ActionLSTM
     
-    model_path = os.path.join(BASE_DIR, "lstm", "checkpoints", "action_lstm_best.pth")
-    if not os.path.exists(model_path):
+    model_path = BASE_DIR / "lstm" / "checkpoints" / "action_lstm_best.pth"
+    if not model_path.exists():
         print(f"  SKIP: No model at {model_path}")
         return False
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = ActionLSTM(input_size=34, hidden_size=64, num_layers=2, num_classes=3).to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(str(model_path), map_location=device))
     model.eval()
     
     classes = ["Idle", "Sprinting", "Kicking"]
@@ -93,14 +97,16 @@ def verify_yolo():
     print("  Loading yolo11n-pose.pt...")
     model = YOLO("yolo11n-pose.pt")
     
-    test_frame_dir = os.path.join(BASE_DIR, "esrgan", "data", "hr_frames")
+    test_frame_dir = BASE_DIR / "esrgan" / "data" / "hr_frames"
+    if not test_frame_dir.exists():
+         return False
     test_frames = [f for f in os.listdir(test_frame_dir) if f.endswith(".png")]
     
     if not test_frames:
         print("  SKIP: No test frames found")
         return False
     
-    frame = cv2.imread(os.path.join(test_frame_dir, test_frames[0]))
+    frame = cv2.imread(str(test_frame_dir / test_frames[0]))
     results = model(frame, verbose=False)
     
     num_detections = len(results[0].boxes) if results[0].boxes is not None else 0

@@ -1,6 +1,7 @@
 import os
 import argparse
 import numpy as np
+from pathlib import Path
 
 BASE_POSE = np.array([
     [0.50, 0.15],
@@ -142,12 +143,13 @@ def main():
     parser.add_argument('--output_dir', type=str, default='data', help='Output directory')
     args = parser.parse_args()
     
-    os.makedirs(args.output_dir, exist_ok=True)
+    out_dir = Path(args.output_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
     
     data, labels = generate_dataset(args.samples, args.frames)
     
-    data_path = os.path.join(args.output_dir, "lstm_train_data.npy")
-    labels_path = os.path.join(args.output_dir, "lstm_train_labels.npy")
+    data_path = str(out_dir / "lstm_train_data.npy")
+    labels_path = str(out_dir / "lstm_train_labels.npy")
     
     np.save(data_path, data)
     np.save(labels_path, labels)

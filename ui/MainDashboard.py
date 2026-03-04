@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 import os
 import sys
+from pathlib import Path
 import time
 
 
@@ -204,7 +205,7 @@ class MainDashboard(ctk.CTkFrame):
         ctk.CTkLabel(header, text="📊  Match Analysis Report",
                      font=("Roboto", 22, "bold"), text_color="#58a6ff").pack(side="left")
         if self.video_path:
-            ctk.CTkLabel(header, text=f"  •  {os.path.basename(self.video_path)}",
+            ctk.CTkLabel(header, text=f"  •  {Path(self.video_path).name}",
                          font=("Roboto", 13), text_color="#888888").pack(side="left", padx=(5, 0))
 
         if self.total_analyzed_frames == 0:
@@ -563,7 +564,7 @@ class MainDashboard(ctk.CTkFrame):
             return frame
 
     def run_analysis_loop(self):
-        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__))))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
         from core.VideoAnalyticsEngine import VideoAnalyticsEngine
         import torch
         import numpy as np
@@ -729,16 +730,16 @@ class MainDashboard(ctk.CTkFrame):
         self.lbl_status.configure(text="Status: Generating PDF...", text_color="blue")
 
         try:
-            sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__))))
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
             from core.ReportGenerator import ReportGenerator
 
-            gen = ReportGenerator(output_dir=os.path.join(os.path.dirname(os.path.dirname(__file__)), "reports"))
+            gen = ReportGenerator(output_dir=str(Path(__file__).resolve().parent.parent / "reports"))
 
             stats = {
                 "action_counts": self.action_counts,
                 "total_frames": self.total_analyzed_frames,
             }
-            video_name = os.path.basename(self.video_path) if self.video_path else "Unknown"
+            video_name = Path(self.video_path).name if self.video_path else "Unknown"
             report_path = gen.generate_report("match_report.pdf", stats, video_name=video_name)
 
             messagebox.showinfo("Report Generated", f"Report saved to:\n{report_path}")

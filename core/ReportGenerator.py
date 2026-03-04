@@ -2,15 +2,15 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 from reportlab.lib import colors
 import os
+from pathlib import Path
 
 class ReportGenerator:
     def __init__(self, output_dir="reports"):
-        self.output_dir = output_dir
-        if not os.path.exists(output_dir):
-            os.makedirs(output_dir)
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
 
     def generate_report(self, filename, stats, video_name="Unknown"):
-        filepath = os.path.join(self.output_dir, filename)
+        filepath = str(self.output_dir / filename)
         c = canvas.Canvas(filepath, pagesize=letter)
         width, height = letter
 

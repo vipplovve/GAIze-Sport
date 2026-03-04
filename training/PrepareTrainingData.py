@@ -1,22 +1,23 @@
 import os
 import cv2
 import numpy as np
+from pathlib import Path
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-ESRGAN_HR_DIR = os.path.join(BASE_DIR, "esrgan", "data", "hr_frames")
-LSTM_DATA_DIR = os.path.join(BASE_DIR, "lstm", "data")
-VIDEO_PATH = os.path.join(BASE_DIR, "data", "videos", "soccer_clip.mp4")
+BASE_DIR = Path(__file__).resolve().parent
+ESRGAN_HR_DIR = BASE_DIR / "esrgan" / "data" / "hr_frames"
+LSTM_DATA_DIR = BASE_DIR / "lstm" / "data"
+VIDEO_PATH = BASE_DIR / "data" / "videos" / "soccer_clip.mp4"
 
 def extract_frames(num_frames=50):
-    os.makedirs(ESRGAN_HR_DIR, exist_ok=True)
+    ESRGAN_HR_DIR.mkdir(parents=True, exist_ok=True)
 
-    if not os.path.exists(VIDEO_PATH):
+    if not VIDEO_PATH.exists():
         print(f"ERROR: Video not found at {VIDEO_PATH}")
         print("Please place your soccer video at:")
         print(f"  {VIDEO_PATH}")
         return False
 
-    cap = cv2.VideoCapture(VIDEO_PATH)
+    cap = cv2.VideoCapture(str(VIDEO_PATH))
     total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     step = max(1, total // num_frames)
 
@@ -28,7 +29,7 @@ def extract_frames(num_frames=50):
             break
 
         if frame_idx % step == 0:
-            out_path = os.path.join(ESRGAN_HR_DIR, f"frame_{saved:04d}.png")
+            out_path = str(ESRGAN_HR_DIR / f"frame_{saved:04d}.png")
             cv2.imwrite(out_path, frame)
             saved += 1
 
@@ -111,7 +112,7 @@ def generate_kicking(num_frames=30):
     return np.array(sequence)
 
 def generate_lstm_data(samples_per_class=100):
-    os.makedirs(LSTM_DATA_DIR, exist_ok=True)
+    LSTM_DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     data = []
     labels = []
@@ -130,8 +131,8 @@ def generate_lstm_data(samples_per_class=100):
     data = data[shuffle_idx]
     labels = labels[shuffle_idx]
 
-    data_path = os.path.join(LSTM_DATA_DIR, "lstm_train_data.npy")
-    labels_path = os.path.join(LSTM_DATA_DIR, "lstm_train_labels.npy")
+    data_path = str(LSTM_DATA_DIR / "lstm_train_data.npy")
+    labels_path = str(LSTM_DATA_DIR / "lstm_train_labels.npy")
     np.save(data_path, data)
     np.save(labels_path, labels)
 

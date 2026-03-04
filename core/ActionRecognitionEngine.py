@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import torch
 import torch.nn as nn
 import numpy as np
@@ -26,15 +27,15 @@ class ActionRecognitionEngine:
         self.sequence_length = 30
         self.model = ActionLSTM(self.input_size, num_classes=self.num_classes)
         if model_path is None:
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            self.model_path = os.path.join(base_dir, "training", "lstm", "checkpoints", "action_lstm_best.pth")
+            base_dir = Path(__file__).resolve().parent.parent
+            self.model_path = str(base_dir / "training" / "lstm" / "checkpoints" / "action_lstm_best.pth")
         else:
             self.model_path = model_path
         self.loaded = False
 
     def load_model(self):
         try:
-            if os.path.exists(self.model_path):
+            if Path(self.model_path).exists():
                 self.model.load_state_dict(torch.load(self.model_path, map_location="cpu"))
                 print(f"LSTM weights loaded from {self.model_path}")
             else:

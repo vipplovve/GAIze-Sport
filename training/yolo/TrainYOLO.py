@@ -5,6 +5,7 @@ Uses the Ultralytics API to fine-tune a YOLO pose model on custom data.
 import os
 import time
 import threading
+from pathlib import Path
 
 def train_from_gui(config_dict, log_callback=print, stop_event=None):
     """
@@ -43,7 +44,7 @@ def train_from_gui(config_dict, log_callback=print, stop_event=None):
     log_callback(f"Output     : {project}/{name}")
     log_callback("-" * 60)
 
-    if not data_yaml or not os.path.exists(data_yaml):
+    if not data_yaml or not Path(data_yaml).exists():
         log_callback(f"ERROR: Dataset YAML not found: {data_yaml}")
         log_callback("Please provide a valid COCO-format dataset YAML file.")
         log_callback("")
@@ -79,14 +80,14 @@ def train_from_gui(config_dict, log_callback=print, stop_event=None):
         log_callback(f" Results saved to: {project}/{name}")
         log_callback("=" * 60)
 
-        best_path = os.path.join(project, name, "weights", "best.pt")
-        if os.path.exists(best_path):
+        best_path = Path(project) / name / "weights" / "best.pt"
+        if best_path.exists():
             log_callback(f"Best model: {best_path}")
-            return best_path
+            return str(best_path)
         else:
-            last_path = os.path.join(project, name, "weights", "last.pt")
+            last_path = Path(project) / name / "weights" / "last.pt"
             log_callback(f"Last model: {last_path}")
-            return last_path
+            return str(last_path)
 
     except Exception as e:
         log_callback(f"ERROR: Training failed: {e}")
