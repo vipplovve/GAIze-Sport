@@ -1,15 +1,16 @@
 import hashlib
 from cryptography.fernet import Fernet
 import os
+from pathlib import Path
 
 class SecurityManager:
     def __init__(self, key_path="secret.key"):
-        self.key_path = key_path
+        self.key_path = Path(key_path)
         self.key = self._load_or_generate_key()
         self.cipher = Fernet(self.key)
 
     def _load_or_generate_key(self):
-        if os.path.exists(self.key_path):
+        if self.key_path.exists():
             with open(self.key_path, "rb") as key_file:
                 return key_file.read()
         else:

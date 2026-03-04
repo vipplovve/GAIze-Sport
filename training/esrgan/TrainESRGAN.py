@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 import threading
+from pathlib import Path
 
 import torch
 import torch.optim as optim
@@ -76,7 +77,8 @@ def train_phase1(args, log=print, stop_event=None):
     optimizer = optim.Adam(generator.parameters(), lr=args.lr, betas=(0.9, 0.999))
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-7)
 
-    os.makedirs(args.checkpoint_dir, exist_ok=True)
+    ckpt_dir = Path(args.checkpoint_dir)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(1, args.epochs + 1):
         if stop_event and stop_event.is_set():
@@ -108,11 +110,11 @@ def train_phase1(args, log=print, stop_event=None):
             f"LR: {scheduler.get_last_lr()[0]:.2e} | Time: {elapsed:.1f}s")
 
         if epoch % args.save_every == 0:
-            path = os.path.join(args.checkpoint_dir, f"phase1_gen_epoch{epoch}.pth")
+            path = str(ckpt_dir / f"phase1_gen_epoch{epoch}.pth")
             torch.save(generator.state_dict(), path)
             log(f"  -> Saved checkpoint: {path}")
 
-    final_path = os.path.join(args.checkpoint_dir, "phase1_gen.pth")
+    final_path = str(ckpt_dir / "phase1_gen.pth")
     torch.save(generator.state_dict(), final_path)
     log(f"Phase 1 complete! Final model: {final_path}")
     return final_path
@@ -146,7 +148,8 @@ def train_phase2(args, log=print, stop_event=None):
     scheduler_gen = CosineAnnealingLR(opt_gen, T_max=args.epochs, eta_min=1e-7)
     scheduler_disc = CosineAnnealingLR(opt_disc, T_max=args.epochs, eta_min=1e-7)
 
-    os.makedirs(args.checkpoint_dir, exist_ok=True)
+    ckpt_dir = Path(args.checkpoint_dir)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     for epoch in range(1, args.epochs + 1):
         if stop_event and stop_event.is_set():
@@ -204,14 +207,14 @@ def train_phase2(args, log=print, stop_event=None):
             f"Time: {elapsed:.1f}s")
 
         if epoch % args.save_every == 0:
-            gen_path = os.path.join(args.checkpoint_dir, f"phase2_gen_epoch{epoch}.pth")
-            disc_path = os.path.join(args.checkpoint_dir, f"phase2_disc_epoch{epoch}.pth")
+            gen_path = str(ckpt_dir / f"phase2_gen_epoch{epoch}.pth")
+            disc_path = str(ckpt_dir / f"phase2_disc_epoch{epoch}.pth")
             torch.save(generator.state_dict(), gen_path)
             torch.save(discriminator.state_dict(), disc_path)
             log(f"  -> Saved: {gen_path}, {disc_path}")
 
-    torch.save(generator.state_dict(), os.path.join(args.checkpoint_dir, "esrgan_generator.pth"))
-    torch.save(discriminator.state_dict(), os.path.join(args.checkpoint_dir, "esrgan_discriminator.pth"))
+    torch.save(generator.state_dict(), str(ckpt_dir / "esrgan_generator.pth"))
+    torch.save(discriminator.state_dict(), str(ckpt_dir / "esrgan_discriminator.pth"))
     log(f"Phase 2 complete! Final models saved in {args.checkpoint_dir}/")
 
 def train_from_gui(config_dict, log_callback=print, stop_event=None):

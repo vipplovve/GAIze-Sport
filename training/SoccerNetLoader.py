@@ -4,15 +4,16 @@ import json
 import cv2
 import numpy as np
 from SoccerNet.Downloader import SoccerNetDownloader
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.VideoAnalyticsEngine import VideoAnalyticsEngine
 
 class SoccerNetLoader:
     def __init__(self, local_dir="data/SoccerNet"):
         self.local_dir = local_dir
         self.downloader = SoccerNetDownloader(LocalDirectory=local_dir)
-        os.makedirs(local_dir, exist_ok=True)
+        Path(local_dir).mkdir(parents=True, exist_ok=True)
 
     def download_task(self, task="action-spotting", split=["train", "valid", "test"]):
         print(f"Downloading SoccerNet task: {task} for splits: {split}...")
@@ -20,12 +21,12 @@ class SoccerNetLoader:
         print("Download complete.")
 
     def extract_frames_for_esrgan(self, match_path, output_dir, num_frames=100):
-        os.makedirs(output_dir, exist_ok=True)
+        Path(output_dir).mkdir(parents=True, exist_ok=True)
         video_files = [f for f in os.listdir(match_path) if f.endswith(".mkv") or f.endswith(".mp4")]
         
         frame_idx = 0
         for video_file in video_files:
-            video_path = os.path.join(match_path, video_file)
+            video_path = str(Path(match_path) / video_file)
             cap = cv2.VideoCapture(video_path)
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
             
@@ -38,7 +39,7 @@ class SoccerNetLoader:
                     break
                 
                 if count % step == 0:
-                    out_path = os.path.join(output_dir, f"sn_frame_{frame_idx:06d}.png")
+                    out_path = str(Path(output_dir) / f"sn_frame_{frame_idx:06d}.png")
                     cv2.imwrite(out_path, frame)
                     frame_idx += 1
                 
@@ -71,9 +72,9 @@ class SoccerNetLoader:
             total_seconds = (int(half)-1)*45*60 + minutes*60 + seconds
             
             video_file = f"{half}_720p.mkv"
-            video_path = os.path.join(match_path, video_file)
+            video_path = str(Path(match_path) / video_file)
             
-            if not os.path.exists(video_path):
+            if not Path(video_path).exists():
                 continue
 
             cap = cv2.VideoCapture(video_path)

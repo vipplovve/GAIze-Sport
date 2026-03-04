@@ -4,14 +4,16 @@ from tkinter import filedialog, messagebox
 import threading
 import os
 import sys
+from pathlib import Path
 
 # Resolve project root for imports
-PROJECT_ROOT = os.path.join(os.path.dirname(os.path.dirname(__file__)))
+PROJECT_ROOT_PATH = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = str(PROJECT_ROOT_PATH)
 
 # Add training sub-dirs to sys.path so their internal imports resolve
 # (e.g. TrainESRGAN.py uses "from ESRGANModel import ...")
 for _subdir in ["esrgan", "lstm", "yolo"]:
-    _p = os.path.join(PROJECT_ROOT, "training", _subdir)
+    _p = str(PROJECT_ROOT_PATH / "training" / _subdir)
     if _p not in sys.path:
         sys.path.insert(0, _p)
 if PROJECT_ROOT not in sys.path:
@@ -133,8 +135,8 @@ class TrainingPanel(ctk.CTkFrame):
         ctk.CTkLabel(tab, text="ESRGAN Super-Resolution Training",
                      font=("Roboto", 16, "bold")).grid(row=0, column=0, columnspan=3, pady=(10, 5))
 
-        esrgan_ckpt_dir = os.path.join(PROJECT_ROOT, "training", "esrgan", "checkpoints")
-        esrgan_hr_dir = os.path.join(PROJECT_ROOT, "training", "data", "hr_frames")
+        esrgan_ckpt_dir = str(PROJECT_ROOT_PATH / "training" / "esrgan" / "checkpoints")
+        esrgan_hr_dir = str(PROJECT_ROOT_PATH / "training" / "data" / "hr_frames")
 
         self.esrgan_phase = self._make_field(tab, "Phase (1=PSNR, 2=GAN):", "1", 1)
         self.esrgan_hr_dir = self._make_field(tab, "HR Images Dir:", esrgan_hr_dir, 2, browse_dir=True)
@@ -176,7 +178,7 @@ class TrainingPanel(ctk.CTkFrame):
 
         def run():
             try:
-                sys.path.insert(0, os.path.join(PROJECT_ROOT, "training", "esrgan"))
+                sys.path.insert(0, str(PROJECT_ROOT_PATH / "training" / "esrgan"))
                 from training.esrgan.TrainESRGAN import train_from_gui
 
                 train_from_gui(config,
@@ -202,8 +204,8 @@ class TrainingPanel(ctk.CTkFrame):
         ctk.CTkLabel(tab, text="LSTM Action Recognition Training",
                      font=("Roboto", 16, "bold")).grid(row=0, column=0, columnspan=3, pady=(10, 5))
 
-        lstm_ckpt_dir = os.path.join(PROJECT_ROOT, "training", "lstm", "checkpoints")
-        lstm_data_dir = os.path.join(PROJECT_ROOT, "training", "lstm", "data")
+        lstm_ckpt_dir = str(PROJECT_ROOT_PATH / "training" / "lstm" / "checkpoints")
+        lstm_data_dir = str(PROJECT_ROOT_PATH / "training" / "lstm" / "data")
 
         self.lstm_data_dir = self._make_field(tab, "Data Directory:", lstm_data_dir, 1, browse_dir=True)
         self.lstm_epochs = self._make_field(tab, "Epochs:", "30", 2)
@@ -268,7 +270,7 @@ class TrainingPanel(ctk.CTkFrame):
         ctk.CTkLabel(tab, text="YOLOv11 Pose Fine-tuning",
                      font=("Roboto", 16, "bold")).grid(row=0, column=0, columnspan=3, pady=(10, 5))
 
-        yolo_model = os.path.join(PROJECT_ROOT, "training", "yolo11n-pose.pt")
+        yolo_model = str(PROJECT_ROOT_PATH / "training" / "yolo11n-pose.pt")
 
         self.yolo_model = self._make_field(tab, "Base Model:", yolo_model, 1, browse=True)
         self.yolo_data = self._make_field(tab, "Dataset YAML:", "", 2, browse=True)
@@ -294,7 +296,7 @@ class TrainingPanel(ctk.CTkFrame):
             'imgsz': int(self.yolo_imgsz.get()),
             'batch': int(self.yolo_batch.get()),
             'device': self.yolo_device.get(),
-            'project': os.path.join(PROJECT_ROOT, "training", "runs", "train"),
+            'project': str(PROJECT_ROOT_PATH / "training" / "runs" / "train"),
             'name': 'yolo_finetune',
         }
 

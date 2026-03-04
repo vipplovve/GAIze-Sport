@@ -8,8 +8,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader, random_split
+from pathlib import Path
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from core.ActionRecognitionEngine import ActionLSTM
 
 class KeypointDataset(Dataset):
@@ -77,8 +78,9 @@ def train(args, log=print, stop_event=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     log(f"Device: {device}")
 
-    data_path = os.path.join(args.data_dir, "lstm_train_data.npy")
-    labels_path = os.path.join(args.data_dir, "lstm_train_labels.npy")
+    data_dir = Path(args.data_dir)
+    data_path = str(data_dir / "lstm_train_data.npy")
+    labels_path = str(data_dir / "lstm_train_labels.npy")
 
     dataset = KeypointDataset(data_path, labels_path)
 
@@ -102,7 +104,8 @@ def train(args, log=print, stop_event=None):
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.5)
 
-    os.makedirs(args.checkpoint_dir, exist_ok=True)
+    ckpt_dir = Path(args.checkpoint_dir)
+    ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     best_val_acc = 0.0
 
@@ -164,11 +167,11 @@ def train(args, log=print, stop_event=None):
 
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            best_path = os.path.join(args.checkpoint_dir, "action_lstm_best.pth")
+            best_path = str(ckpt_dir / "action_lstm_best.pth")
             torch.save(model.state_dict(), best_path)
             log(f"  -> New best model! Val Acc: {val_acc:.1f}% -> {best_path}")
 
-    final_path = os.path.join(args.checkpoint_dir, "action_lstm.pth")
+    final_path = str(ckpt_dir / "action_lstm.pth")
     torch.save(model.state_dict(), final_path)
 
     log(f"Training complete!")
