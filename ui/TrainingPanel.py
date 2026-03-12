@@ -6,12 +6,9 @@ import os
 import sys
 from pathlib import Path
 
-# Resolve project root for imports
 PROJECT_ROOT_PATH = Path(__file__).resolve().parent.parent
 PROJECT_ROOT = str(PROJECT_ROOT_PATH)
 
-# Add training sub-dirs to sys.path so their internal imports resolve
-# (e.g. TrainESRGAN.py uses "from ESRGANModel import ...")
 for _subdir in ["esrgan", "lstm", "yolo"]:
     _p = str(PROJECT_ROOT_PATH / "training" / _subdir)
     if _p not in sys.path:
@@ -21,7 +18,6 @@ if PROJECT_ROOT not in sys.path:
 
 
 class TrainingPanel(ctk.CTkFrame):
-    """Tabbed training panel with ESRGAN, LSTM, and YOLO fine-tuning tabs."""
 
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
@@ -42,10 +38,8 @@ class TrainingPanel(ctk.CTkFrame):
         self._build_lstm_tab()
         self._build_yolo_tab()
 
-    # ─── Shared Helpers ───────────────────────────────────────
 
     def _make_field(self, parent, label, default, row, browse=False, browse_dir=False):
-        """Create a labeled entry field with optional browse button."""
         lbl = ctk.CTkLabel(parent, text=label, font=("Roboto", 12), anchor="w", width=130)
         lbl.grid(row=row, column=0, padx=(10, 5), pady=4, sticky="w")
 
@@ -69,7 +63,6 @@ class TrainingPanel(ctk.CTkFrame):
         return entry
 
     def _make_controls(self, parent, start_cmd, row):
-        """Create Start/Stop buttons and progress bar."""
         ctrl_frame = ctk.CTkFrame(parent, fg_color="transparent")
         ctrl_frame.grid(row=row, column=0, columnspan=3, sticky="ew", padx=10, pady=(10, 5))
 
@@ -93,7 +86,6 @@ class TrainingPanel(ctk.CTkFrame):
         return btn_start, btn_stop, progress, status_lbl
 
     def _make_log(self, parent, row):
-        """Create a dark-themed training log textbox."""
         log_frame = ctk.CTkFrame(parent, corner_radius=8)
         log_frame.grid(row=row, column=0, columnspan=3, sticky="nsew", padx=10, pady=(5, 10))
 
@@ -108,7 +100,6 @@ class TrainingPanel(ctk.CTkFrame):
         return log_box
 
     def _log_to(self, log_box, text):
-        """Thread-safe log append."""
         def _append():
             log_box.configure(state="normal")
             log_box.insert("end", str(text) + "\n")
@@ -125,7 +116,6 @@ class TrainingPanel(ctk.CTkFrame):
     def _is_training(self):
         return self.training_thread is not None and self.training_thread.is_alive()
 
-    # ─── ESRGAN Tab ───────────────────────────────────────────
 
     def _build_esrgan_tab(self):
         tab = self.tabview.tab("ESRGAN")
@@ -151,7 +141,12 @@ class TrainingPanel(ctk.CTkFrame):
         self.esrgan_start, self.esrgan_stop_btn, self.esrgan_progress, self.esrgan_status = \
             self._make_controls(tab, self._start_esrgan, 10)
 
-        self.esrgan_log = self._make_log(tab, 11)
+        self.btn_view_esrgan_metrics = ctk.CTkButton(tab, text="📊 View GAN Metrics", 
+                                                     command=self._view_esrgan_metrics,
+                                                     fg_color="#3b5998", hover_color="#2d4373")
+        self.btn_view_esrgan_metrics.grid(row=11, column=0, columnspan=3, pady=(5, 5))
+
+        self.esrgan_log = self._make_log(tab, 12)
 
     def _start_esrgan(self):
         if self._is_training():
@@ -194,7 +189,15 @@ class TrainingPanel(ctk.CTkFrame):
         self.training_thread = threading.Thread(target=run, daemon=True)
         self.training_thread.start()
 
-    # ─── LSTM Tab ─────────────────────────────────────────────
+    def _view_esrgan_metrics(self):
+        ckpt_dir = self.esrgan_ckpt.get()
+        paths = [
+            os.path.join(ckpt_dir, "esrgan_phase1_loss.png"),
+            os.path.join(ckpt_dir, "esrgan_phase1_psnr.png"),
+            os.path.join(ckpt_dir, "esrgan_gan_loss.png")
+        ]
+        self._show_metrics_window("ESRGAN Metrics", paths)
+
 
     def _build_lstm_tab(self):
         tab = self.tabview.tab("LSTM")
@@ -208,19 +211,38 @@ class TrainingPanel(ctk.CTkFrame):
         lstm_data_dir = str(PROJECT_ROOT_PATH / "training" / "lstm" / "data")
 
         self.lstm_data_dir = self._make_field(tab, "Data Directory:", lstm_data_dir, 1, browse_dir=True)
-        self.lstm_epochs = self._make_field(tab, "Epochs:", "30", 2)
-        self.lstm_batch = self._make_field(tab, "Batch Size:", "32", 3)
-        self.lstm_lr = self._make_field(tab, "Learning Rate:", "0.001", 4)
-        self.lstm_input = self._make_field(tab, "Input Size:", "34", 5)
-        self.lstm_hidden = self._make_field(tab, "Hidden Size:", "64", 6)
-        self.lstm_layers = self._make_field(tab, "LSTM Layers:", "2", 7)
-        self.lstm_classes = self._make_field(tab, "Num Classes:", "3", 8)
-        self.lstm_ckpt = self._make_field(tab, "Checkpoint Dir:", lstm_ckpt_dir, 9, browse_dir=True)
+        self.lstm_source_clips = self._make_field(tab, "Clips Source Dir:", "", 2, browse_dir=True)
+        self.lstm_epochs = self._make_field(tab, "Epochs:", "30", 3)
+        self.lstm_batch = self._make_field(tab, "Batch Size:", "32", 4)
+        self.lstm_lr = self._make_field(tab, "Learning Rate:", "0.001", 5)
+        self.lstm_input = self._make_field(tab, "Input Size:", "34", 6)
+        self.lstm_hidden = self._make_field(tab, "Hidden Size:", "64", 7)
+        self.lstm_layers = self._make_field(tab, "LSTM Layers:", "2", 8)
+        self.lstm_classes = self._make_field(tab, "Num Classes:", "3", 9)
+        self.lstm_ckpt = self._make_field(tab, "Checkpoint Dir:", lstm_ckpt_dir, 10, browse_dir=True)
 
         self.lstm_start, self.lstm_stop_btn, self.lstm_progress, self.lstm_status = \
-            self._make_controls(tab, self._start_lstm, 10)
+            self._make_controls(tab, self._start_lstm, 11)
+            
+        btn_frame = ctk.CTkFrame(tab, fg_color="transparent")
+        btn_frame.grid(row=12, column=0, columnspan=3, pady=5)
 
-        self.lstm_log = self._make_log(tab, 11)
+        self.btn_extract_lstm_data = ctk.CTkButton(btn_frame, text="⚙ Extract Dataset from Clips", 
+                                                   command=self._start_lstm_extraction,
+                                                   fg_color="#a86a25", hover_color="#8a5318")
+        self.btn_extract_lstm_data.pack(side="left", padx=5)
+
+        self.btn_generate_synthetic = ctk.CTkButton(btn_frame, text="🧪 Generate Synthetic Data", 
+                                                    command=self._start_synthetic_generation,
+                                                    fg_color="#800080", hover_color="#4B0082")
+        self.btn_generate_synthetic.pack(side="left", padx=5)
+
+        self.btn_view_lstm_metrics = ctk.CTkButton(btn_frame, text="📊 View LSTM Metrics", 
+                                                   command=self._view_lstm_metrics,
+                                                   fg_color="#3b5998", hover_color="#2d4373")
+        self.btn_view_lstm_metrics.pack(side="left", padx=5)
+
+        self.lstm_log = self._make_log(tab, 13)
 
     def _start_lstm(self):
         if self._is_training():
@@ -260,7 +282,84 @@ class TrainingPanel(ctk.CTkFrame):
         self.training_thread = threading.Thread(target=run, daemon=True)
         self.training_thread.start()
 
-    # ─── YOLO Tab ─────────────────────────────────────────────
+    def _start_lstm_extraction(self):
+        if self._is_training():
+            messagebox.showwarning("Busy", "Another session is already running.")
+            return
+
+        source_dir = self.lstm_source_clips.get()
+        if not source_dir or not os.path.exists(source_dir):
+            messagebox.showerror("Error", "Please select a valid Clips Source Directory first.")
+            return
+
+        out_dir = self.lstm_data_dir.get()
+        
+        self.stop_event.clear()
+        self.lstm_progress.set(0)
+        self.lstm_status.configure(text="Extracting...", text_color="orange")
+        
+        def run():
+            try:
+                from training.lstm.ExtractRealLSTMData import extract_lstm_data_from_videos
+                success = extract_lstm_data_from_videos(
+                    source_dir=source_dir,
+                    output_dir=out_dir,
+                    seq_len=30,
+                    log_callback=lambda t: self._log_to(self.lstm_log, t),
+                    stop_event=self.stop_event
+                )
+                if success:
+                    self.lstm_status.configure(text="Extraction Complete ✓", text_color="#2cc985")
+                    self.lstm_progress.set(1.0)
+                else:
+                    self.lstm_status.configure(text="Extraction Failed/Stopped", text_color="red")
+            except Exception as e:
+                self._log_to(self.lstm_log, f"ERROR: {e}")
+                self.lstm_status.configure(text="Failed ✗", text_color="red")
+
+        self.training_thread = threading.Thread(target=run, daemon=True)
+        self.training_thread.start()
+
+    def _start_synthetic_generation(self):
+        if self._is_training():
+            messagebox.showwarning("Busy", "Another session is already running.")
+            return
+
+        out_dir = self.lstm_data_dir.get()
+        if not out_dir or not os.path.exists(out_dir):
+            messagebox.showerror("Error", "Please select a valid Data Directory first.")
+            return
+
+        self.stop_event.clear()
+        self.lstm_progress.set(0)
+        self.lstm_status.configure(text="Generating...", text_color="orange")
+        
+        def run():
+            try:
+                sys.path.insert(0, str(PROJECT_ROOT_PATH / "training"))
+                import PrepareTrainingData
+                self._log_to(self.lstm_log, "Generating 100 synthetic sequences per class...")
+                PrepareTrainingData.generate_lstm_data(samples_per_class=100)
+                self._log_to(self.lstm_log, f"Synthetic data generation complete! Data saved to {out_dir}")
+                
+                self.lstm_status.configure(text="Generation Complete ✓", text_color="#2cc985")
+                self.lstm_progress.set(1.0)
+            except Exception as e:
+                self._log_to(self.lstm_log, f"ERROR: {e}")
+                self.lstm_status.configure(text="Failed ✗", text_color="red")
+        
+        self.training_thread = threading.Thread(target=run, daemon=True)
+        self.training_thread.start()
+
+    def _view_lstm_metrics(self):
+        ckpt_dir = self.lstm_ckpt.get()
+        paths = [
+            os.path.join(ckpt_dir, "lstm_loss.png"),
+            os.path.join(ckpt_dir, "lstm_accuracy.png"),
+            os.path.join(ckpt_dir, "lstm_confusion_matrix.png")
+        ]
+        self._show_metrics_window("LSTM Metrics", paths)
+
 
     def _build_yolo_tab(self):
         tab = self.tabview.tab("YOLO Fine-tune")
@@ -320,3 +419,44 @@ class TrainingPanel(ctk.CTkFrame):
 
         self.training_thread = threading.Thread(target=run, daemon=True)
         self.training_thread.start()
+
+
+    def _show_metrics_window(self, title, image_paths):
+        top = ctk.CTkToplevel(self)
+        top.title(title)
+        top.geometry("900x700")
+        
+        top.attributes('-topmost', True)
+        top.after(100, lambda: top.attributes('-topmost', False))
+        
+        scroll = ctk.CTkScrollableFrame(top)
+        scroll.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        from PIL import Image
+        
+        found_any = False
+        for path in image_paths:
+            if os.path.exists(path):
+                found_any = True
+                try:
+                    img = Image.open(path)
+                    max_width = 800
+                    if img.width > max_width:
+                        ratio = max_width / img.width
+                        new_h = int(img.height * ratio)
+                        img = img.resize((max_width, new_h), Image.LANCZOS)
+                        
+                    ctk_img = ctk.CTkImage(light_image=img, dark_image=img, size=(img.width, img.height))
+                    lbl = ctk.CTkLabel(scroll, text="", image=ctk_img)
+                    lbl.pack(pady=10)
+                    
+                    title_lbl = ctk.CTkLabel(scroll, text=os.path.basename(path), font=("Roboto", 14, "bold"))
+                    title_lbl.pack(pady=(0, 20))
+                except Exception as e:
+                    err_lbl = ctk.CTkLabel(scroll, text=f"Error loading {os.path.basename(path)}: {e}", text_color="red")
+                    err_lbl.pack(pady=10)
+                    
+        if not found_any:
+            msg = ctk.CTkLabel(scroll, text="No metrics plots found.\nPlease run training first or check the checkpoints directory.", 
+                               font=("Roboto", 16), text_color="orange")
+            msg.pack(pady=50)

@@ -6,6 +6,7 @@ from .AnalyticsPanel import AnalyticsPanel
 from .MiniMapPanel import MiniMapPanel
 from .CalibrationView import CalibrationView
 from .TrainingPanel import TrainingPanel
+from .AnalysisConfigDialog import AnalysisConfigDialog
 import cv2
 import threading
 import tkinter as tk
@@ -25,7 +26,6 @@ class MainDashboard(ctk.CTkFrame):
         self.grid_columnconfigure(0, weight=0)
         self.grid_columnconfigure(1, weight=1)
 
-        # ── Sidebar ───────────────────────────────────────────
         self.sidebar_frame = ctk.CTkFrame(self, width=150, corner_radius=0)
         self.sidebar_frame.grid(row=0, column=0, sticky="nsew")
         self.sidebar_frame.grid_rowconfigure(7, weight=1)
@@ -56,7 +56,6 @@ class MainDashboard(ctk.CTkFrame):
                                                       fg_color="#6a1b9a", hover_color="#8e24aa")
         self.sidebar_button_training.grid(row=5, column=0, padx=20, pady=8)
 
-        # Spacer row 6 has no widget, row 7 is the weight row
 
         self.lbl_status = ctk.CTkLabel(self.sidebar_frame, text="Status: Idle", text_color="gray",
                                         font=("Roboto", 11))
@@ -67,13 +66,11 @@ class MainDashboard(ctk.CTkFrame):
                                          command=self._do_logout)
         self.btn_logout.grid(row=9, column=0, padx=20, pady=(5, 20), sticky="s")
 
-        # ── Main Content Area ─────────────────────────────────
         self.main_content = ctk.CTkFrame(self, corner_radius=10)
         self.main_content.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
         self.main_content.grid_rowconfigure(0, weight=1)
         self.main_content.grid_columnconfigure(0, weight=1)
 
-        # ── State ─────────────────────────────────────────────
         self.video_player = None
         self.video_path = None
         self.analyzing = False
@@ -90,27 +87,22 @@ class MainDashboard(ctk.CTkFrame):
         self.chat_frame = None
         self.current_view = None
 
-        # ── Build persistent views ────────────────────────────
         self._build_player_view()
         self._build_training_view()
         self._build_chat_view()
         self._show_welcome()
 
-    # ─── View Builders ────────────────────────────────────────
 
     def _build_player_view(self):
-        """Video player + console + minimap + analytics — all in one view."""
         self.player_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
         self.player_frame.grid_rowconfigure(0, weight=3)
         self.player_frame.grid_rowconfigure(1, weight=1)
         self.player_frame.grid_columnconfigure(0, weight=1)
         self.player_frame.grid_columnconfigure(1, weight=0)
 
-        # Video player (left, spans 2 rows area)
         self.video_player = VideoPlayerWidget(self.player_frame)
         self.video_player.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        # Console log below video
         console_frame = ctk.CTkFrame(self.player_frame, corner_radius=8)
         console_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 5))
 
@@ -122,7 +114,6 @@ class MainDashboard(ctk.CTkFrame):
                                           state="disabled", wrap="word")
         self.console_log.pack(fill="both", expand=True, padx=5, pady=5)
 
-        # Right sidebar: analytics + minimap + calibrate
         right_panel = ctk.CTkFrame(self.player_frame, width=280, fg_color="transparent")
         right_panel.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 5), pady=5)
         right_panel.grid_propagate(False)
@@ -136,7 +127,7 @@ class MainDashboard(ctk.CTkFrame):
 
         self.btn_calibrate = ctk.CTkButton(right_panel, text="Calibrate Pitch",
                                             command=self.open_calibration)
-        self.btn_calibrate.pack(pady=5)
+        self.btn_calibrate.pack(pady=(5, 10))
 
     def _build_training_view(self):
         self.training_frame = TrainingPanel(self.main_content)
@@ -150,7 +141,6 @@ class MainDashboard(ctk.CTkFrame):
         self.chat_widget.grid(row=0, column=0, sticky="nsew", padx=10, pady=10)
 
     def _show_welcome(self):
-        """Show a lightweight welcome message in main content when no view is active."""
         self.welcome_frame = ctk.CTkFrame(self.main_content, fg_color="transparent")
         self.welcome_frame.grid_rowconfigure(0, weight=1)
         self.welcome_frame.grid_columnconfigure(0, weight=1)
@@ -172,7 +162,6 @@ class MainDashboard(ctk.CTkFrame):
         self.welcome_frame.grid(row=0, column=0, sticky="nsew")
         self.current_view = "welcome"
 
-    # ─── View Switching ───────────────────────────────────────
 
     def _hide_all_views(self):
         for frame in [self.player_frame, self.analysis_results_frame,
@@ -199,7 +188,6 @@ class MainDashboard(ctk.CTkFrame):
         scroll = ctk.CTkScrollableFrame(self.analysis_results_frame)
         scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # ── Header ───────────────────────────────────────────
         header = ctk.CTkFrame(scroll, fg_color="transparent")
         header.pack(fill="x", pady=(5, 10))
         ctk.CTkLabel(header, text="📊  Match Analysis Report",
@@ -221,7 +209,6 @@ class MainDashboard(ctk.CTkFrame):
 
         total_actions = sum(self.action_counts.values())
 
-        # ── Stat Cards ───────────────────────────────────────
         cards_frame = ctk.CTkFrame(scroll, fg_color="transparent")
         cards_frame.pack(fill="x", padx=5, pady=(0, 10))
         cards_frame.grid_columnconfigure((0, 1, 2, 3), weight=1)
@@ -250,7 +237,6 @@ class MainDashboard(ctk.CTkFrame):
             ctk.CTkLabel(card, text=title, font=("Roboto", 11), text_color="#888888").pack()
             ctk.CTkLabel(card, text=value, font=("Roboto", 16, "bold"), text_color=color).pack(pady=(2, 10))
 
-        # ── Charts Row ───────────────────────────────────────
         try:
             import matplotlib
             matplotlib.use("Agg")
@@ -262,7 +248,6 @@ class MainDashboard(ctk.CTkFrame):
             chart_row.pack(fill="x", padx=5, pady=5)
             chart_row.grid_columnconfigure((0, 1), weight=1)
 
-            # ── Pie Chart: Action Distribution ────────────────
             pie_frame = ctk.CTkFrame(chart_row, fg_color="#1a1a2e", corner_radius=10)
             pie_frame.grid(row=0, column=0, padx=5, pady=5, sticky="nsew")
             ctk.CTkLabel(pie_frame, text="Action Distribution",
@@ -289,7 +274,6 @@ class MainDashboard(ctk.CTkFrame):
             canvas1.get_tk_widget().pack(padx=5, pady=(0, 8))
             plt.close(fig1)
 
-            # ── Bar Chart: Detection Density ──────────────────
             bar_frame = ctk.CTkFrame(chart_row, fg_color="#1a1a2e", corner_radius=10)
             bar_frame.grid(row=0, column=1, padx=5, pady=5, sticky="nsew")
             ctk.CTkLabel(bar_frame, text="Detection Density",
@@ -323,7 +307,6 @@ class MainDashboard(ctk.CTkFrame):
             canvas2.get_tk_widget().pack(padx=5, pady=(0, 8))
             plt.close(fig2)
 
-            # ── Timeline: Action Over Frames ──────────────────
             timeline_frame = ctk.CTkFrame(scroll, fg_color="#1a1a2e", corner_radius=10)
             timeline_frame.pack(fill="x", padx=10, pady=5)
             ctk.CTkLabel(timeline_frame, text="Action Timeline",
@@ -357,7 +340,6 @@ class MainDashboard(ctk.CTkFrame):
             ctk.CTkLabel(scroll, text="Install matplotlib for charts: pip install matplotlib",
                          text_color="orange", font=("Roboto", 12)).pack(pady=10)
 
-        # ── Assessment Summary ────────────────────────────────
         assess_frame = ctk.CTkFrame(scroll, fg_color="#1a1a2e", corner_radius=10, border_width=1, border_color="#333")
         assess_frame.pack(fill="x", padx=10, pady=10)
         ctk.CTkLabel(assess_frame, text="🧠  AI Assessment Summary",
@@ -396,7 +378,6 @@ class MainDashboard(ctk.CTkFrame):
                          text_color="#cccccc", wraplength=700, justify="left", anchor="w").pack(anchor="w", padx=15, pady=1)
         ctk.CTkLabel(assess_frame, text="", height=5).pack()
 
-        # ── Action Breakdown Bars ─────────────────────────────
         breakdown_frame = ctk.CTkFrame(scroll, fg_color="#1a1a2e", corner_radius=10)
         breakdown_frame.pack(fill="x", padx=10, pady=5)
         ctk.CTkLabel(breakdown_frame, text="Action Breakdown",
@@ -417,7 +398,6 @@ class MainDashboard(ctk.CTkFrame):
                          font=("Roboto", 11), text_color="#aaaaaa").pack(side="left", padx=5)
         ctk.CTkLabel(breakdown_frame, text="", height=5).pack()
 
-        # ── Per-Frame Log ─────────────────────────────────────
         if self.analysis_data:
             log_frame = ctk.CTkFrame(scroll, fg_color="#1a1a2e", corner_radius=10)
             log_frame.pack(fill="x", padx=10, pady=5)
@@ -453,7 +433,6 @@ class MainDashboard(ctk.CTkFrame):
         self.training_frame.grid(row=0, column=0, sticky="nsew")
         self.current_view = "training"
 
-    # ─── Helpers ──────────────────────────────────────────────
 
     def log_to_console(self, text):
         if self.console_log:
@@ -477,8 +456,14 @@ class MainDashboard(ctk.CTkFrame):
             self.total_analyzed_frames = 0
             self.show_player_view()
             self.video_player.load_video(file_path)
-            self.lbl_status.configure(text="Status: Video Loaded", text_color="green")
-            self.start_analysis()
+            self.lbl_status.configure(text="Status: Configuring Analysis...", text_color="yellow")
+            
+            AnalysisConfigDialog(self, self._on_config_done)
+
+    def _on_config_done(self, config):
+        self.analysis_config = config
+        self.lbl_status.configure(text="Status: Video Loaded", text_color="green")
+        self.start_analysis()
 
     def open_calibration(self):
         if not self.video_path:
@@ -495,7 +480,6 @@ class MainDashboard(ctk.CTkFrame):
     def on_calibration_done(self, points):
         self.log_to_console("[INFO] Pitch calibration updated!")
 
-    # ─── Analysis ─────────────────────────────────────────────
 
     def start_analysis(self):
         if not self.video_path:
@@ -512,7 +496,6 @@ class MainDashboard(ctk.CTkFrame):
         self.log_to_console("[INFO] Analysis stopped by user.")
 
     def process_single_frame(self, frame):
-        """Process a single frame through YOLO+LSTM. Used by the video player's frame_processor callback."""
         if self.analyzer is None:
             return frame
         try:
@@ -536,18 +519,14 @@ class MainDashboard(ctk.CTkFrame):
                             out = self.analyzer.action_recognizer.model(tensor)
                             probs = torch.softmax(out, dim=1)[0].cpu().numpy()
 
-                        # Apply user-requested biases for tie-breaking:
-                        # Kicking +0.05, Sprinting +0.03
-                        # Indices: 0=Idle, 1=Sprinting, 2=Kicking
                         biased_probs = probs.copy()
-                        biased_probs[2] += 0.05  # Kicking preference
-                        biased_probs[1] += 0.03  # Sprinting preference
+                        biased_probs[2] += 0.05
+                        biased_probs[1] += 0.03
 
                         action_labels = ["Idle", "Sprinting", "Kicking"]
                         best_idx = int(biased_probs.argmax())
                         best_action = action_labels[best_idx]
 
-                        # Draw all 3 action scores on video (showing original probs for transparency)
                         y_pos = 40
                         cv2.putText(annotated, f"Action: {best_action}", (20, y_pos),
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
@@ -569,10 +548,32 @@ class MainDashboard(ctk.CTkFrame):
         import torch
         import numpy as np
 
-        self.log_to_console("[INFO] Loading YOLOv11 pose model...")
-        self.analyzer = VideoAnalyticsEngine()
+        config = getattr(self, "analysis_config", {})
+        yolo_path = config.get("yolo_path", "yolo11n-pose.pt")
+        lstm_path = config.get("lstm_path", None)
+        use_esrgan = config.get("use_esrgan", False)
+        esrgan_path = config.get("esrgan_path", None)
+        
+        self.log_to_console(f"[INFO] Loading YOLOv11 pose model ({Path(yolo_path).name})...")
+        self.analyzer = VideoAnalyticsEngine(model_path=yolo_path, lstm_model=lstm_path)
         self.analyzer.load_model()
         self.keypoints_buffer = []
+        
+        esrgan_engine = None
+        esrgan_out_dir = None
+        if use_esrgan and esrgan_path:
+            self.log_to_console(f"[INFO] Loading ESRGAN 4x model ({Path(esrgan_path).name})...")
+            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+            from core.FrameEnhancementEngine import FrameEnhancementEngine
+            esrgan_engine = FrameEnhancementEngine(model_path=esrgan_path)
+            esrgan_engine.load_model()
+            if esrgan_engine.model is None:
+                self.log_to_console("[WARNING] Failed to load ESRGAN. Falling back to normal.")
+                use_esrgan = False
+            else:
+                esrgan_out_dir = Path(__file__).resolve().parent.parent / "videos" / "ESRGAN-enhanced"
+                esrgan_out_dir.mkdir(parents=True, exist_ok=True)
+                self.log_to_console(f"[INFO] Enhanced frames will be saved to: {esrgan_out_dir}")
 
         if self.video_player:
             self.video_player.frame_processor = self.process_single_frame
@@ -590,7 +591,17 @@ class MainDashboard(ctk.CTkFrame):
                 break
 
             try:
-                results = self.analyzer.model(frame, verbose=False)
+                if use_esrgan and esrgan_engine:
+                    enhanced_frame = esrgan_engine.enhance_frame(frame)
+                    analysis_frame = enhanced_frame
+                    
+                    if esrgan_out_dir:
+                        out_path = esrgan_out_dir / f"frame_{frame_count:05d}.jpg"
+                        cv2.imwrite(str(out_path), enhanced_frame)
+                else:
+                    analysis_frame = frame
+
+                results = self.analyzer.model(analysis_frame, verbose=False)
                 annotated = results[0].plot()
 
                 boxes = results[0].boxes
@@ -609,7 +620,7 @@ class MainDashboard(ctk.CTkFrame):
 
                 player_positions = []
                 if boxes is not None and len(boxes) > 0:
-                    frame_h, frame_w = frame.shape[:2]
+                    frame_h, frame_w = analysis_frame.shape[:2]
                     for i, box in enumerate(boxes.xyxy.cpu().numpy()):
                         cx = ((box[0] + box[2]) / 2) / frame_w
                         cy = ((box[1] + box[3]) / 2) / frame_h
@@ -640,8 +651,6 @@ class MainDashboard(ctk.CTkFrame):
                                 out = self.analyzer.action_recognizer.model(tensor)
                                 probs = torch.softmax(out, dim=1)[0].cpu().numpy()
 
-                            # Apply user-requested biases for tie-breaking:
-                            # Kicking +0.05, Sprinting +0.03
                             biased_probs = probs.copy()
                             biased_probs[2] += 0.05
                             biased_probs[1] += 0.03
@@ -649,11 +658,9 @@ class MainDashboard(ctk.CTkFrame):
                             action_labels = ["Idle", "Sprinting", "Kicking"]
                             best_idx = int(biased_probs.argmax())
                             action_name = action_labels[best_idx]
-                            # Use original probability for confidence score so it's honest
                             action_conf = float(probs[best_idx])
                             all_probs = {label: int(probs[i] * 100) for i, label in enumerate(action_labels)}
 
-                            # Draw all 3 action scores on video
                             y_pos = 40
                             cv2.putText(annotated, f"Action: {action_name}", (20, y_pos),
                                        cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
@@ -668,7 +675,6 @@ class MainDashboard(ctk.CTkFrame):
                             if action_name in self.action_counts:
                                 self.action_counts[action_name] += 1
 
-                # Draw person count
                 cv2.putText(annotated, f"Persons: {num_detections}", (20, annotated.shape[0] - 20),
                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 200, 0), 2)
 
@@ -687,7 +693,6 @@ class MainDashboard(ctk.CTkFrame):
                     self.video_player.slider.set(progress)
                     self.video_player.lbl_frame_info.configure(text=f"{frame_count} / {total_frames}")
 
-                # Build action scores string for stats panel
                 if all_probs:
                     action_str = f"F{frame_count}: {action_name} | Idle:{all_probs['Idle']}% Sprint:{all_probs['Sprinting']}% Kick:{all_probs['Kicking']}% | {num_detections}P"
                 else:
@@ -699,7 +704,6 @@ class MainDashboard(ctk.CTkFrame):
                     "action": action_str
                 })
 
-                # Console log with all action %
                 if all_probs:
                     log_line = (f"▸ F{frame_count:>4d} │ {num_detections}P │ "
                                 f"Idle:{all_probs['Idle']:>3d}% │ Sprint:{all_probs['Sprinting']:>3d}% │ "

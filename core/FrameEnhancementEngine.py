@@ -36,8 +36,21 @@ class FrameEnhancementEngine:
         
         if self.model is None:
             return frame
+            
+        orig_h, orig_w = frame.shape[:2]
         
-        img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
+        max_dim = 480
+        scale = 1.0
+        
+        if max(orig_h, orig_w) > max_dim:
+            scale = max_dim / float(max(orig_h, orig_w))
+            new_w = int(orig_w * scale)
+            new_h = int(orig_h * scale)
+            process_frame = cv2.resize(frame, (new_w, new_h), interpolation=cv2.INTER_AREA)
+        else:
+            process_frame = frame
+        
+        img_rgb = cv2.cvtColor(process_frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
         tensor = torch.from_numpy(img_rgb).permute(2, 0, 1).unsqueeze(0).to(self.device)
         
         with torch.no_grad():
@@ -47,7 +60,11 @@ class FrameEnhancementEngine:
         sr_img = np.clip(sr_img * 255.0, 0, 255).astype(np.uint8)
         sr_bgr = cv2.cvtColor(sr_img, cv2.COLOR_RGB2BGR)
         
-        return sr_bgr
+        target_w = orig_w * 4
+        target_h = orig_h * 4
+        
+        final_bgr = cv2.resize(sr_bgr, (target_w, target_h), interpolation=cv2.INTER_LANCZOS4)
+        return final_bgr
 
     def enhance_video(self, video_path, output_path):
         cap = cv2.VideoCapture(video_path)

@@ -23,8 +23,6 @@ class AnalyticsPanel(ctk.CTkFrame):
         self.lbl_actions = ctk.CTkLabel(self, text="Action Log", font=("Roboto", 14, "bold"))
         self.lbl_actions.pack(pady=(15, 5))
         
-        # Use a CTkTextbox instead of dynamically created labels — avoids
-        # "invalid command name" errors when old widgets are destroyed.
         self.log_box = ctk.CTkTextbox(self, height=120, font=("Consolas", 10),
                                        fg_color="#0d1117", text_color="#58a6ff",
                                        state="disabled", wrap="word")
@@ -55,7 +53,6 @@ class AnalyticsPanel(ctk.CTkFrame):
             self.log_box.configure(state="normal")
             self.log_box.insert("end", f"• {text}\n")
             self._log_line_count += 1
-            # Trim old lines to avoid unbounded growth
             if self._log_line_count > self._max_lines:
                 self.log_box.delete("1.0", "2.0")
                 self._log_line_count -= 1

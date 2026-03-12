@@ -3,10 +3,15 @@ from .ActionRecognitionEngine import ActionRecognitionEngine
 from ultralytics import YOLO
 
 class VideoAnalyticsEngine:
-    def __init__(self, model_path="yolo11n-pose.pt"):
+    def __init__(self, model_path="yolo11n-pose.pt", lstm_model=None):
         self.model_path = model_path
         self.model = None
-        self.action_recognizer = ActionRecognitionEngine()
+        
+        if lstm_model:
+            self.action_recognizer = ActionRecognitionEngine(model_path=lstm_model)
+        else:
+            self.action_recognizer = ActionRecognitionEngine()
+            
         self.keypoints_buffer = []
 
     def load_model(self):
