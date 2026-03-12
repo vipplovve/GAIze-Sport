@@ -10,8 +10,13 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 from ESRGANModel import RRDBNet, VGGDiscriminator
-from LossFunctions import ESRGANLoss, PSNRLoss
+from LossFunctions import ESRGANLoss, PSNRLoss, calculate_psnr
 from DatasetLoader import DatasetLoader
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from Visualization import plot_loss_curves, plot_gan_loss, plot_psnr_curve
 
 def get_config():
     print("=" * 60)
@@ -80,6 +85,9 @@ def train_phase1(args, log=print, stop_event=None):
     ckpt_dir = Path(args.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
+    history_loss = []
+    history_psnr = []
+
     for epoch in range(1, args.epochs + 1):
         if stop_event and stop_event.is_set():
             log("Training stopped by user.")
@@ -87,6 +95,7 @@ def train_phase1(args, log=print, stop_event=None):
 
         generator.train()
         epoch_loss = 0.0
+        epoch_psnr = 0.0
         start_time = time.time()
 
         for batch_idx, (lr_imgs, hr_imgs) in enumerate(dataloader):
@@ -95,27 +104,49 @@ def train_phase1(args, log=print, stop_event=None):
 
             sr_imgs = generator(lr_imgs)
             loss = criterion(sr_imgs, hr_imgs)
+            
+            with torch.no_grad():
+                psnr = calculate_psnr(sr_imgs, hr_imgs)
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
 
             epoch_loss += loss.item()
+            epoch_psnr += psnr.item()
 
         scheduler.step()
         avg_loss = epoch_loss / len(dataloader)
+        avg_psnr = epoch_psnr / len(dataloader)
+        history_loss.append(avg_loss)
+        history_psnr.append(avg_psnr)
         elapsed = time.time() - start_time
 
-        log(f"Epoch [{epoch}/{args.epochs}] | L1 Loss: {avg_loss:.6f} | "
+        log(f"Epoch [{epoch}/{args.epochs}] | L1 Loss: {avg_loss:.6f} | PSNR: {avg_psnr:.2f} dB | "
             f"LR: {scheduler.get_last_lr()[0]:.2e} | Time: {elapsed:.1f}s")
 
         if epoch % args.save_every == 0:
             path = str(ckpt_dir / f"phase1_gen_epoch{epoch}.pth")
             torch.save(generator.state_dict(), path)
             log(f"  -> Saved checkpoint: {path}")
+            
+            try:
+                plot_loss_curves(history_loss, title="ESRGAN Phase 1 Loss", 
+                                 filename="esrgan_phase1_loss.png", save_dir=str(ckpt_dir))
+                plot_psnr_curve(history_psnr, title="ESRGAN Phase 1 PSNR", 
+                                filename="esrgan_phase1_psnr.png", save_dir=str(ckpt_dir))
+            except Exception as e:
+                log(f"  -> Could not plot loss: {e}")
 
     final_path = str(ckpt_dir / "phase1_gen.pth")
     torch.save(generator.state_dict(), final_path)
+    try:
+        plot_loss_curves(history_loss, title="ESRGAN Phase 1 Loss", 
+                         filename="esrgan_phase1_loss.png", save_dir=str(ckpt_dir))
+        plot_psnr_curve(history_psnr, title="ESRGAN Phase 1 PSNR", 
+                        filename="esrgan_phase1_psnr.png", save_dir=str(ckpt_dir))
+    except:
+        pass
     log(f"Phase 1 complete! Final model: {final_path}")
     return final_path
 
@@ -150,6 +181,9 @@ def train_phase2(args, log=print, stop_event=None):
 
     ckpt_dir = Path(args.checkpoint_dir)
     ckpt_dir.mkdir(parents=True, exist_ok=True)
+
+    history_g_loss = []
+    history_d_loss = []
 
     for epoch in range(1, args.epochs + 1):
         if stop_event and stop_event.is_set():
@@ -201,6 +235,8 @@ def train_phase2(args, log=print, stop_event=None):
 
         avg_g = g_loss_total / len(dataloader)
         avg_d = d_loss_total / len(dataloader)
+        history_g_loss.append(avg_g)
+        history_d_loss.append(avg_d)
         elapsed = time.time() - start_time
 
         log(f"Epoch [{epoch}/{args.epochs}] | G Loss: {avg_g:.4f} | D Loss: {avg_d:.4f} | "
@@ -212,13 +248,22 @@ def train_phase2(args, log=print, stop_event=None):
             torch.save(generator.state_dict(), gen_path)
             torch.save(discriminator.state_dict(), disc_path)
             log(f"  -> Saved: {gen_path}, {disc_path}")
+            try:
+                plot_gan_loss(history_g_loss, history_d_loss, title="ESRGAN Phase 2 GAN Loss",
+                              filename="esrgan_gan_loss.png", save_dir=str(ckpt_dir))
+            except Exception as e:
+                log(f"  -> Could not plot loss: {e}")
 
     torch.save(generator.state_dict(), str(ckpt_dir / "esrgan_generator.pth"))
     torch.save(discriminator.state_dict(), str(ckpt_dir / "esrgan_discriminator.pth"))
+    try:
+        plot_gan_loss(history_g_loss, history_d_loss, title="ESRGAN Phase 2 GAN Loss",
+                      filename="esrgan_gan_loss.png", save_dir=str(ckpt_dir))
+    except:
+        pass
     log(f"Phase 2 complete! Final models saved in {args.checkpoint_dir}/")
 
 def train_from_gui(config_dict, log_callback=print, stop_event=None):
-    """Entry point for GUI-based training."""
     args = argparse.Namespace(**config_dict)
     if not hasattr(args, 'save_every'):
         args.save_every = 5

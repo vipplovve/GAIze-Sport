@@ -13,6 +13,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent))
 from core.ActionRecognitionEngine import ActionLSTM
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from Visualization import plot_loss_curves, plot_accuracy_curves, plot_confusion_matrix
+
 class KeypointDataset(Dataset):
     def __init__(self, data_path, labels_path):
         self.data = np.load(data_path).astype(np.float32)
@@ -109,6 +112,13 @@ def train(args, log=print, stop_event=None):
 
     best_val_acc = 0.0
 
+    history_train_loss = []
+    history_val_loss = []
+    history_train_acc = []
+    history_val_acc = []
+    
+    class_names = ["Idle", "Sprinting", "Kicking"]
+
     for epoch in range(1, args.epochs + 1):
         if stop_event and stop_event.is_set():
             log("Training stopped by user.")
@@ -140,6 +150,9 @@ def train(args, log=print, stop_event=None):
         val_loss = 0.0
         val_correct = 0
         val_total = 0
+        
+        all_val_labels = []
+        all_val_preds = []
 
         with torch.no_grad():
             for sequences, labels in val_loader:
@@ -153,16 +166,27 @@ def train(args, log=print, stop_event=None):
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += labels.size(0)
                 val_correct += (predicted == labels).sum().item()
+                
+                all_val_labels.extend(labels.cpu().numpy())
+                all_val_preds.extend(predicted.cpu().numpy())
 
         scheduler.step()
 
         train_acc = 100 * train_correct / train_total
         val_acc = 100 * val_correct / val_total if val_total > 0 else 0
+        t_loss = train_loss / len(train_loader)
+        v_loss = val_loss / len(val_loader)
+        
+        history_train_loss.append(t_loss)
+        history_val_loss.append(v_loss)
+        history_train_acc.append(train_acc)
+        history_val_acc.append(val_acc)
+        
         elapsed = time.time() - start_time
 
         log(f"Epoch [{epoch:3d}/{args.epochs}] | "
-            f"Train Loss: {train_loss/len(train_loader):.4f} | Train Acc: {train_acc:.1f}% | "
-            f"Val Loss: {val_loss/len(val_loader):.4f} | Val Acc: {val_acc:.1f}% | "
+            f"Train Loss: {t_loss:.4f} | Train Acc: {train_acc:.1f}% | "
+            f"Val Loss: {v_loss:.4f} | Val Acc: {val_acc:.1f}% | "
             f"Time: {elapsed:.1f}s")
 
         if val_acc > best_val_acc:
@@ -170,6 +194,17 @@ def train(args, log=print, stop_event=None):
             best_path = str(ckpt_dir / "action_lstm_best.pth")
             torch.save(model.state_dict(), best_path)
             log(f"  -> New best model! Val Acc: {val_acc:.1f}% -> {best_path}")
+            
+        if epoch % 5 == 0 or epoch == args.epochs:
+            try:
+                plot_loss_curves(history_train_loss, history_val_loss, title="LSTM Loss",
+                                 filename="lstm_loss.png", save_dir=str(ckpt_dir))
+                plot_accuracy_curves(history_train_acc, history_val_acc, title="LSTM Accuracy",
+                                     filename="lstm_accuracy.png", save_dir=str(ckpt_dir))
+                plot_confusion_matrix(all_val_labels, all_val_preds, class_names, title=f"LSTM Confusion Matrix (Epoch {epoch})",
+                                      filename="lstm_confusion_matrix.png", save_dir=str(ckpt_dir))
+            except Exception as e:
+                log(f"  -> Could not generate plots: {e}")
 
     final_path = str(ckpt_dir / "action_lstm.pth")
     torch.save(model.state_dict(), final_path)
@@ -180,7 +215,6 @@ def train(args, log=print, stop_event=None):
     return final_path
 
 def train_from_gui(config_dict, log_callback=print, stop_event=None):
-    """Entry point for GUI-based training."""
     args = argparse.Namespace(**config_dict)
     return train(args, log=log_callback, stop_event=stop_event)
 

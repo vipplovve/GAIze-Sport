@@ -3,7 +3,6 @@ from .AppStyles import *
 
 
 class LoginScreen(ctk.CTkFrame):
-    """GAIze-Sport login / landing screen with project description and auth."""
 
     def __init__(self, master, on_login_success, **kwargs):
         super().__init__(master, **kwargs)
@@ -15,7 +14,6 @@ class LoginScreen(ctk.CTkFrame):
         center = ctk.CTkFrame(self, fg_color="transparent")
         center.place(relx=0.5, rely=0.5, anchor="center")
 
-        # ── Branding ──────────────────────────────────────────
         self.lbl_icon = ctk.CTkLabel(center, text="🛡️", font=("Segoe UI Emoji", 60))
         self.lbl_icon.pack(pady=(0, 2))
 
@@ -34,7 +32,6 @@ class LoginScreen(ctk.CTkFrame):
                                          text_color="#888888")
         self.lbl_tagline.pack(pady=(0, 15))
 
-        # ── Description Card ──────────────────────────────────
         desc_frame = ctk.CTkFrame(center, fg_color="#1a1a2e", corner_radius=12, border_width=1, border_color="#2cc985")
         desc_frame.pack(fill="x", padx=25, pady=(0, 15))
 
@@ -60,7 +57,6 @@ class LoginScreen(ctk.CTkFrame):
 
         ctk.CTkLabel(desc_frame, text="", height=3).pack()
 
-        # ── Login Form ────────────────────────────────────────
         form_frame = ctk.CTkFrame(center, fg_color="transparent")
         form_frame.pack(pady=(0, 10))
 
@@ -87,7 +83,6 @@ class LoginScreen(ctk.CTkFrame):
                                        text_color="#ff5555")
         self.lbl_error.grid(row=4, column=0, pady=(0, 5))
 
-        # ── Buttons ───────────────────────────────────────────
         btn_frame = ctk.CTkFrame(center, fg_color="transparent")
         btn_frame.pack(pady=(0, 10))
 
@@ -105,7 +100,6 @@ class LoginScreen(ctk.CTkFrame):
                                        command=self._do_quit)
         self.btn_quit.pack(side="left", padx=10)
 
-        # ── Footer ────────────────────────────────────────────
         libs_list = "PyTorch • Ultralytics • OpenCV • CustomTkinter • NumPy • Pandas • Matplotlib • Transformers • ReportLab • yt-dlp • Pillow"
         self.lbl_footer = ctk.CTkLabel(center, text=f"© 2026 GAIze-Sport  •  Major Project II\nPowered by: {libs_list}",
                                         font=("Roboto", 10),

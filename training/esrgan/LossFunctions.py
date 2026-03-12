@@ -86,3 +86,9 @@ class PSNRLoss(nn.Module):
 
     def forward(self, sr, hr):
         return self.criterion(sr, hr)
+
+def calculate_psnr(sr, hr):
+    mse = torch.mean((sr - hr) ** 2)
+    if mse == 0:
+        return float('inf')
+    return 20 * torch.log10(1.0 / torch.sqrt(mse))

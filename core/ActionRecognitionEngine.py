@@ -20,7 +20,7 @@ class ActionLSTM(nn.Module):
         return out
 
 class ActionRecognitionEngine:
-    def __init__(self, model_path=None):
+    def __init__(self, model_path=None, class_weights=None):
         self.input_size = 34
         self.num_classes = 3
         self.classes = ["Idle", "Sprinting", "Kicking"]
@@ -31,6 +31,12 @@ class ActionRecognitionEngine:
             self.model_path = str(base_dir / "training" / "lstm" / "checkpoints" / "action_lstm_best.pth")
         else:
             self.model_path = model_path
+            
+        if class_weights is None:
+            self.class_weights = torch.tensor([0.7, 1.5, 2.0], dtype=torch.float32)
+        else:
+            self.class_weights = torch.tensor(class_weights, dtype=torch.float32)
+            
         self.loaded = False
 
     def load_model(self):
@@ -60,6 +66,11 @@ class ActionRecognitionEngine:
         
         with torch.no_grad():
             output = self.model(input_tensor)
-            _, predicted = torch.max(output.data, 1)
+            
+            probs = torch.nn.functional.softmax(output.data, dim=1)
+            
+            weighted_probs = probs * self.class_weights.to(output.device)
+            
+            _, predicted = torch.max(weighted_probs, 1)
             
         return self.classes[predicted.item()]
