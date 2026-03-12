@@ -135,9 +135,3 @@ Weights: `models/LSTM Action Recognition Model.pth`
 - [ ] Web-based dashboard mode
 
 ---
-
-## 👤 Author
-
-**Viplove** — Major Project II (2026)
-
-> *Powered by PyTorch • Ultralytics • OpenCV • CustomTkinter • NumPy • Matplotlib • ReportLab • Pillow*
