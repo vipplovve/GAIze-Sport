@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 
 class ActionLSTM(nn.Module):
-    def __init__(self, input_size=34, hidden_size=64, num_layers=2, num_classes=3):
+    def __init__(self, input_size=34, hidden_size=64, num_layers=2, num_classes=4):
         super(ActionLSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
@@ -20,23 +20,33 @@ class ActionLSTM(nn.Module):
         return out
 
 class ActionRecognitionEngine:
-    def __init__(self, model_path=None, class_weights=None):
+    def __init__(self, model_path=None, class_weights=None, sport="Football"):
         self.input_size = 34
-        self.num_classes = 3
-        self.classes = ["Idle", "Sprinting", "Kicking"]
+        if sport == "Basketball":
+            self.num_classes = 5
+            self.classes = ["Idle", "Dribbling", "Shooting", "Guarding", "Dunking"]
+        else:
+            self.num_classes = 4
+            self.classes = ["Idle", "Sprinting", "Kicking", "Dribbling"]
+
         self.sequence_length = 30
         self.model = ActionLSTM(self.input_size, num_classes=self.num_classes)
+        self.sport = sport
+
+        base_dir = Path(__file__).resolve().parent.parent
         if model_path is None:
-            base_dir = Path(__file__).resolve().parent.parent
-            self.model_path = str(base_dir / "training" / "lstm" / "checkpoints" / "action_lstm_best.pth")
+            self.model_path = str(base_dir / "models" / f"LSTM {sport} Action Recognition Model.pth")
         else:
             self.model_path = model_path
-            
+
         if class_weights is None:
-            self.class_weights = torch.tensor([0.7, 1.5, 2.0], dtype=torch.float32)
+            if sport == "Basketball":
+                self.class_weights = torch.tensor([0.7, 1.2, 2.0, 1.5, 2.0], dtype=torch.float32)
+            else:
+                self.class_weights = torch.tensor([0.7, 1.5, 2.0, 1.3], dtype=torch.float32)
         else:
             self.class_weights = torch.tensor(class_weights, dtype=torch.float32)
-            
+
         self.loaded = False
 
     def load_model(self):
@@ -63,14 +73,11 @@ class ActionRecognitionEngine:
             return "Buffering..."
 
         input_tensor = self.preprocess_keypoints(keypoints_buffer)
-        
+
         with torch.no_grad():
             output = self.model(input_tensor)
-            
             probs = torch.nn.functional.softmax(output.data, dim=1)
-            
             weighted_probs = probs * self.class_weights.to(output.device)
-            
             _, predicted = torch.max(weighted_probs, 1)
-            
+
         return self.classes[predicted.item()]

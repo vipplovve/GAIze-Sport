@@ -2,7 +2,6 @@ import os
 import sys
 import argparse
 import time
-import threading
 import numpy as np
 import torch
 import torch.nn as nn
@@ -38,23 +37,25 @@ def get_config():
     print("=" * 60)
 
     data_dir = input("Data directory [data]: ").strip() or "data"
+    sport = input("Sport (Football/Basketball) [Football]: ").strip() or "Football"
     epochs = int(input("Number of epochs [30]: ").strip() or "30")
     batch_size = int(input("Batch size [32]: ").strip() or "32")
     lr = float(input("Learning rate [0.001]: ").strip() or "0.001")
     input_size = int(input("Input feature size [34]: ").strip() or "34")
     hidden_size = int(input("LSTM hidden size [64]: ").strip() or "64")
     num_layers = int(input("Number of LSTM layers [2]: ").strip() or "2")
-    num_classes = int(input("Number of action classes [3]: ").strip() or "3")
+    num_classes = int(input("Number of action classes [4]: ").strip() or "4")
     checkpoint_dir = input("Checkpoint directory [checkpoints]: ").strip() or "checkpoints"
 
     config = argparse.Namespace(
-        data_dir=data_dir, epochs=epochs, batch_size=batch_size,
+        sport=sport, data_dir=data_dir, epochs=epochs, batch_size=batch_size,
         lr=lr, input_size=input_size, hidden_size=hidden_size,
         num_layers=num_layers, num_classes=num_classes,
         checkpoint_dir=checkpoint_dir
     )
 
     print("\n" + "-" * 40)
+    print(f"  Sport:        {config.sport}")
     print(f"  Data Dir:     {config.data_dir}")
     print(f"  Epochs:       {config.epochs}")
     print(f"  Batch Size:   {config.batch_size}")
@@ -73,7 +74,7 @@ def get_config():
 
     return config
 
-def train(args, log=print, stop_event=None):
+def train(args, log=print, stop_event=None, progress_callback=None):
     log("=" * 60)
     log(" LSTM Action Recognition Training")
     log("=" * 60)
@@ -82,8 +83,9 @@ def train(args, log=print, stop_event=None):
     log(f"Device: {device}")
 
     data_dir = Path(args.data_dir)
-    data_path = str(data_dir / "lstm_train_data.npy")
-    labels_path = str(data_dir / "lstm_train_labels.npy")
+    sport_key = getattr(args, "sport", "Football").lower()
+    data_path = str(data_dir / f"lstm_train_data_{sport_key}.npy")
+    labels_path = str(data_dir / f"lstm_train_labels_{sport_key}.npy")
 
     dataset = KeypointDataset(data_path, labels_path)
 
@@ -111,13 +113,18 @@ def train(args, log=print, stop_event=None):
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     best_val_acc = 0.0
+    best_path = None
 
     history_train_loss = []
     history_val_loss = []
     history_train_acc = []
     history_val_acc = []
-    
-    class_names = ["Idle", "Sprinting", "Kicking"]
+
+    sport_name = getattr(args, "sport", "Football")
+    if sport_name == "Basketball":
+        class_names = ["Idle", "Dribbling", "Shooting"]
+    else:
+        class_names = ["Idle", "Sprinting", "Kicking", "Dribbling"]
 
     for epoch in range(1, args.epochs + 1):
         if stop_event and stop_event.is_set():
@@ -150,7 +157,7 @@ def train(args, log=print, stop_event=None):
         val_loss = 0.0
         val_correct = 0
         val_total = 0
-        
+
         all_val_labels = []
         all_val_preds = []
 
@@ -166,7 +173,7 @@ def train(args, log=print, stop_event=None):
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += labels.size(0)
                 val_correct += (predicted == labels).sum().item()
-                
+
                 all_val_labels.extend(labels.cpu().numpy())
                 all_val_preds.extend(predicted.cpu().numpy())
 
@@ -176,12 +183,12 @@ def train(args, log=print, stop_event=None):
         val_acc = 100 * val_correct / val_total if val_total > 0 else 0
         t_loss = train_loss / len(train_loader)
         v_loss = val_loss / len(val_loader)
-        
+
         history_train_loss.append(t_loss)
         history_val_loss.append(v_loss)
         history_train_acc.append(train_acc)
         history_val_acc.append(val_acc)
-        
+
         elapsed = time.time() - start_time
 
         log(f"Epoch [{epoch:3d}/{args.epochs}] | "
@@ -189,34 +196,39 @@ def train(args, log=print, stop_event=None):
             f"Val Loss: {v_loss:.4f} | Val Acc: {val_acc:.1f}% | "
             f"Time: {elapsed:.1f}s")
 
+        if progress_callback:
+            progress_callback(epoch, args.epochs)
+
         if val_acc > best_val_acc:
             best_val_acc = val_acc
-            best_path = str(ckpt_dir / "action_lstm_best.pth")
+            sport_dir = ckpt_dir / sport_name.lower()
+            sport_dir.mkdir(parents=True, exist_ok=True)
+            best_path = str(sport_dir / f"LSTM {sport_name} Action Recognition Model.pth")
             torch.save(model.state_dict(), best_path)
             log(f"  -> New best model! Val Acc: {val_acc:.1f}% -> {best_path}")
-            
+
         if epoch % 5 == 0 or epoch == args.epochs:
+            sport_dir = ckpt_dir / sport_name.lower()
+            sport_dir.mkdir(parents=True, exist_ok=True)
             try:
                 plot_loss_curves(history_train_loss, history_val_loss, title="LSTM Loss",
-                                 filename="lstm_loss.png", save_dir=str(ckpt_dir))
+                                 filename="lstm_loss.png", save_dir=str(sport_dir))
                 plot_accuracy_curves(history_train_acc, history_val_acc, title="LSTM Accuracy",
-                                     filename="lstm_accuracy.png", save_dir=str(ckpt_dir))
+                                     filename="lstm_accuracy.png", save_dir=str(sport_dir))
                 plot_confusion_matrix(all_val_labels, all_val_preds, class_names, title=f"LSTM Confusion Matrix (Epoch {epoch})",
-                                      filename="lstm_confusion_matrix.png", save_dir=str(ckpt_dir))
+                                      filename="lstm_confusion_matrix.png", save_dir=str(sport_dir))
             except Exception as e:
                 log(f"  -> Could not generate plots: {e}")
 
-    final_path = str(ckpt_dir / "action_lstm.pth")
-    torch.save(model.state_dict(), final_path)
-
     log(f"Training complete!")
     log(f"Best Val Accuracy: {best_val_acc:.1f}%")
-    log(f"Final model: {final_path}")
-    return final_path
+    if best_path:
+        log(f"Best model generated at: {best_path}")
+    return best_path
 
-def train_from_gui(config_dict, log_callback=print, stop_event=None):
+def train_from_gui(config_dict, log_callback=print, stop_event=None, progress_callback=None):
     args = argparse.Namespace(**config_dict)
-    return train(args, log=log_callback, stop_event=stop_event)
+    return train(args, log=log_callback, stop_event=stop_event, progress_callback=progress_callback)
 
 if __name__ == "__main__":
     config = get_config()

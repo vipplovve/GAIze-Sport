@@ -1,16 +1,27 @@
-customtkinter
-opencv-python
-pillow
-ultralytics
+# ===== Core ML & Deep Learning =====
 torch
 torchvision
-torchaudio
-matplotlib
-pandas
-numpy
+ultralytics
 transformers
-cryptography
-yt-dlp
-reportlab
-SoccerNet
 
+# ===== Computer Vision & Image Processing =====
+opencv-python
+pillow
+numpy
+
+# ===== Data Visualization & Reporting =====
+matplotlib
+reportlab
+
+# ===== GUI Framework =====
+customtkinter
+
+# ===== Security =====
+cryptography
+
+# ===== Data & Datasets =====
+SoccerNet
+scikit-learn
+
+# ===== Streaming & Media =====
+yt-dlp

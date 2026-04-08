@@ -7,6 +7,7 @@ from .MiniMapPanel import MiniMapPanel
 from .CalibrationView import CalibrationView
 from .TrainingPanel import TrainingPanel
 from .AnalysisConfigDialog import AnalysisConfigDialog
+from .TrainingDashboard import TrainingDashboard, PRESET_ANALYSIS
 import cv2
 import threading
 import tkinter as tk
@@ -75,9 +76,9 @@ class MainDashboard(ctk.CTkFrame):
         self.video_path = None
         self.analyzing = False
         self.analysis_data = {}
-        self.action_counts = {"Idle": 0, "Sprinting": 0, "Kicking": 0}
+        self.action_counts = {}
+        self.sport = "Football"
         self.total_analyzed_frames = 0
-        self.console_log = None
         self.analyzer = None
         self.keypoints_buffer = []
 
@@ -105,14 +106,11 @@ class MainDashboard(ctk.CTkFrame):
 
         console_frame = ctk.CTkFrame(self.player_frame, corner_radius=8)
         console_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 5))
+        console_frame.grid_rowconfigure(0, weight=1)
+        console_frame.grid_columnconfigure(0, weight=1)
 
-        lbl = ctk.CTkLabel(console_frame, text="Detection Console", font=("Roboto", 12, "bold"))
-        lbl.pack(anchor="w", padx=10, pady=(5, 0))
-
-        self.console_log = ctk.CTkTextbox(console_frame, height=120, font=("Consolas", 11),
-                                          fg_color="#0d1117", text_color="#58a6ff",
-                                          state="disabled", wrap="word")
-        self.console_log.pack(fill="both", expand=True, padx=5, pady=5)
+        self.console_dashboard = TrainingDashboard(console_frame, preset=PRESET_ANALYSIS)
+        self.console_dashboard.grid(row=0, column=0, sticky="nsew", padx=3, pady=3)
 
         right_panel = ctk.CTkFrame(self.player_frame, width=280, fg_color="transparent")
         right_panel.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 5), pady=5)
@@ -195,6 +193,11 @@ class MainDashboard(ctk.CTkFrame):
         if self.video_path:
             ctk.CTkLabel(header, text=f"  •  {Path(self.video_path).name}",
                          font=("Roboto", 13), text_color="#888888").pack(side="left", padx=(5, 0))
+                         
+        btn_report = ctk.CTkButton(header, text="📥 Download PDF Report", font=("Roboto", 13, "bold"),
+                                   fg_color="#a83232", hover_color="#8b2828",
+                                   command=self.generate_report)
+        btn_report.pack(side="right", padx=10)
 
         if self.total_analyzed_frames == 0:
             empty = ctk.CTkFrame(scroll, fg_color="#1a1a2e", corner_radius=12)
@@ -226,7 +229,7 @@ class MainDashboard(ctk.CTkFrame):
         else:
             card_data.append(("🏆", "Dominant", "N/A", "#f0c040"))
 
-        active = self.action_counts.get("Sprinting", 0) + self.action_counts.get("Kicking", 0)
+        active = sum(v for k, v in self.action_counts.items() if k != "Idle")
         active_pct = int(active / total_actions * 100) if total_actions > 0 else 0
         card_data.append(("⚡", "Activity Rate", f"{active_pct}%", "#e06c75"))
 
@@ -257,9 +260,9 @@ class MainDashboard(ctk.CTkFrame):
             ax1.set_facecolor("#1a1a2e")
             labels = list(self.action_counts.keys())
             sizes = list(self.action_counts.values())
-            colors_pie = ["#2cc985", "#8ab4f8", "#e06c75"]
+            colors_pie = ["#2cc985", "#8ab4f8", "#e06c75", "#f0c040", "#bc8cff"]
             if sum(sizes) > 0:
-                wedges, texts, autotexts = ax1.pie(sizes, labels=labels, colors=colors_pie,
+                wedges, texts, autotexts = ax1.pie(sizes, labels=labels, colors=colors_pie[:len(labels)],
                                                     autopct=lambda p: f'{int(p)}%' if p > 0 else '',
                                                     startangle=90, textprops={"color": "#cccccc", "fontsize": 10})
                 for at in autotexts:
@@ -314,22 +317,34 @@ class MainDashboard(ctk.CTkFrame):
 
             fig3, ax3 = plt.subplots(figsize=(8, 2.2), facecolor="#1a1a2e")
             ax3.set_facecolor("#1a1a2e")
-            action_map = {"Idle": 0, "Sprinting": 1, "Kicking": 2, "---": -0.5}
-            action_colors = {"Idle": "#2cc985", "Sprinting": "#8ab4f8", "Kicking": "#e06c75", "---": "#444444"}
+            actions = list(self.action_counts.keys())
+            colors_list = ["#2cc985", "#8ab4f8", "#e06c75", "#f0c040", "#bc8cff"]
+            
+            if len(actions) > 0:
+                action_map = {a: i for i, a in enumerate(actions)}
+                action_map["---"] = -0.5
+                action_colors = {a: colors_list[i % len(colors_list)] for i, a in enumerate(actions)}
+                action_colors["---"] = "#444444"
+                ylabels = [a[:6] for a in actions]
+            else:
+                action_map = {"---": -0.5}
+                action_colors = {"---": "#444444"}
+                ylabels = []
+
             if sorted_keys:
                 xs = sorted_keys
                 ys = [action_map.get(self.analysis_data[k].get("action", "---"), -0.5) for k in xs]
                 cs = [action_colors.get(self.analysis_data[k].get("action", "---"), "#444") for k in xs]
                 ax3.scatter(xs, ys, c=cs, s=6, alpha=0.8)
-                ax3.set_yticks([0, 1, 2])
-                ax3.set_yticklabels(["Idle", "Sprint", "Kick"], color="#aaa", fontsize=9)
+                ax3.set_yticks(range(len(ylabels)))
+                ax3.set_yticklabels(ylabels, color="#aaa", fontsize=9)
                 ax3.set_xlabel("Frame Number", color="#888", fontsize=9)
                 ax3.tick_params(axis="x", colors="#666", labelsize=8)
                 ax3.spines["top"].set_visible(False)
                 ax3.spines["right"].set_visible(False)
                 ax3.spines["bottom"].set_color("#444")
                 ax3.spines["left"].set_color("#444")
-                ax3.set_ylim(-1, 3)
+                ax3.set_ylim(-1, len(ylabels))
             fig3.tight_layout(pad=0.5)
             canvas3 = FigureCanvasTkAgg(fig3, master=timeline_frame)
             canvas3.draw()
@@ -347,22 +362,22 @@ class MainDashboard(ctk.CTkFrame):
 
         assessment_lines = []
         if total_actions > 0:
-            idle_pct = int(self.action_counts.get("Idle", 0) / total_actions * 100)
-            sprint_pct = int(self.action_counts.get("Sprinting", 0) / total_actions * 100)
-            kick_pct = int(self.action_counts.get("Kicking", 0) / total_actions * 100)
+            actions = list(self.action_counts.keys())
+            pcts = {k: int(v / total_actions * 100) for k, v in self.action_counts.items()}
 
             assessment_lines.append(f"• Analyzed {self.total_analyzed_frames} frames with an average of {avg_det:.0f} person(s) detected per frame.")
-            assessment_lines.append(f"• Action breakdown: Idle {idle_pct}%, Sprinting {sprint_pct}%, Kicking {kick_pct}%.")
+            if len(actions) >= 3:
+                assessment_lines.append(f"• Action breakdown: {actions[0]} {pcts[actions[0]]}%, {actions[1]} {pcts[actions[1]]}%, {actions[2]} {pcts[actions[2]]}%.")
 
-            if sprint_pct > 40:
-                assessment_lines.append("• High sprinting activity detected — indicates an intense, fast-paced game.")
-            elif idle_pct > 60:
-                assessment_lines.append("• Mostly idle activity — the footage may contain limited player movement.")
-            else:
-                assessment_lines.append("• Balanced activity mix — players show varied movement patterns.")
+                if pcts[actions[1]] > 40:
+                    assessment_lines.append(f"• High {actions[1].lower()} activity detected — indicates an intense, fast-paced game.")
+                elif pcts[actions[0]] > 60:
+                    assessment_lines.append(f"• Mostly {actions[0].lower()} activity — the footage may contain limited player movement.")
+                else:
+                    assessment_lines.append("• Balanced activity mix — players show varied movement patterns.")
 
-            if kick_pct > 20:
-                assessment_lines.append("• Significant kicking activity — likely key moments with ball interaction.")
+                if pcts[actions[2]] > 20:
+                    assessment_lines.append(f"• Significant {actions[2].lower()} activity — likely key moments with ball interaction.")
 
             if avg_det >= 5:
                 assessment_lines.append(f"• Dense scene with ~{avg_det:.0f} persons/frame — good for tactical analysis.")
@@ -383,7 +398,9 @@ class MainDashboard(ctk.CTkFrame):
         ctk.CTkLabel(breakdown_frame, text="Action Breakdown",
                      font=("Roboto", 13, "bold"), text_color="#58a6ff").pack(anchor="w", padx=15, pady=(10, 5))
 
-        bar_colors = {"Idle": "#2cc985", "Sprinting": "#8ab4f8", "Kicking": "#e06c75"}
+        actions = list(self.action_counts.keys())
+        colors_list = ["#2cc985", "#8ab4f8", "#e06c75", "#f0c040", "#bc8cff"]
+        bar_colors = {a: colors_list[i % len(colors_list)] for i, a in enumerate(actions)}
         for action, count in self.action_counts.items():
             pct = int(count / total_actions * 100) if total_actions > 0 else 0
             row = ctk.CTkFrame(breakdown_frame, fg_color="transparent")
@@ -435,11 +452,11 @@ class MainDashboard(ctk.CTkFrame):
 
 
     def log_to_console(self, text):
-        if self.console_log:
-            self.console_log.configure(state="normal")
-            self.console_log.insert("end", text + "\n")
-            self.console_log.see("end")
-            self.console_log.configure(state="disabled")
+        if hasattr(self, 'console_dashboard') and self.console_dashboard:
+            try:
+                self.console_dashboard.log(text)
+            except Exception:
+                pass
 
     def _do_logout(self):
         if self.analyzing:
@@ -452,7 +469,7 @@ class MainDashboard(ctk.CTkFrame):
         if file_path:
             self.video_path = file_path
             self.analysis_data = {}
-            self.action_counts = {"Idle": 0, "Sprinting": 0, "Kicking": 0}
+            self.action_counts = {}
             self.total_analyzed_frames = 0
             self.show_player_view()
             self.video_player.load_video(file_path)
@@ -462,6 +479,11 @@ class MainDashboard(ctk.CTkFrame):
 
     def _on_config_done(self, config):
         self.analysis_config = config
+        self.sport = config.get("sport", "Football")
+        if self.sport == "Basketball":
+            self.action_counts = {"Idle": 0, "Dribbling": 0, "Shooting": 0, "Guarding": 0, "Dunking": 0}
+        else:
+            self.action_counts = {"Idle": 0, "Sprinting": 0, "Kicking": 0}
         self.lbl_status.configure(text="Status: Video Loaded", text_color="green")
         self.start_analysis()
 
@@ -487,6 +509,8 @@ class MainDashboard(ctk.CTkFrame):
 
         self.analyzing = True
         self.lbl_status.configure(text="Status: Analyzing...", text_color="yellow")
+        if hasattr(self, 'console_dashboard'):
+            self.console_dashboard.reset()
         self.log_to_console("[INFO] Starting analysis...")
         threading.Thread(target=self.run_analysis_loop, daemon=True).start()
 
@@ -520,10 +544,14 @@ class MainDashboard(ctk.CTkFrame):
                             probs = torch.softmax(out, dim=1)[0].cpu().numpy()
 
                         biased_probs = probs.copy()
-                        biased_probs[2] += 0.05
-                        biased_probs[1] += 0.03
+                        if len(biased_probs) > 2:
+                            biased_probs[2] += 0.05
+                        if len(biased_probs) > 1:
+                            biased_probs[1] += 0.03
 
-                        action_labels = ["Idle", "Sprinting", "Kicking"]
+                        action_labels = list(self.action_counts.keys())
+                        if not action_labels:
+                            action_labels = ["Idle", "Sprinting", "Kicking"]
                         best_idx = int(biased_probs.argmax())
                         best_action = action_labels[best_idx]
 
@@ -547,15 +575,23 @@ class MainDashboard(ctk.CTkFrame):
         from core.VideoAnalyticsEngine import VideoAnalyticsEngine
         import torch
         import numpy as np
+        import os
 
         config = getattr(self, "analysis_config", {})
-        yolo_path = config.get("yolo_path", "yolo11n-pose.pt")
-        lstm_path = config.get("lstm_path", None)
-        use_esrgan = config.get("use_esrgan", False)
-        esrgan_path = config.get("esrgan_path", None)
+        sport = config.get("sport", "Football")
+        base_models = Path(__file__).resolve().parent.parent / "models"
         
-        self.log_to_console(f"[INFO] Loading YOLOv11 pose model ({Path(yolo_path).name})...")
-        self.analyzer = VideoAnalyticsEngine(model_path=yolo_path, lstm_model=lstm_path)
+        raw_yolo = config.get("yolo_path", "")
+        yolo_path = raw_yolo if raw_yolo else str(base_models / "yolo11n-pose.pt")
+        
+        lstm_path = config.get("lstm_path", None)
+        
+        use_esrgan = config.get("use_esrgan", False)
+        raw_esrgan = config.get("esrgan_path", "")
+        esrgan_path = raw_esrgan if raw_esrgan else str(base_models / "ESRGAN Phase #2 Generator.pth")
+        
+        self.log_to_console(f"[INFO] Loading YOLOv11 pose model ({Path(yolo_path).name}) for {sport}...")
+        self.analyzer = VideoAnalyticsEngine(model_path=yolo_path, lstm_model=lstm_path, sport=sport)
         self.analyzer.load_model()
         self.keypoints_buffer = []
         
@@ -584,6 +620,7 @@ class MainDashboard(ctk.CTkFrame):
         fps = cap.get(cv2.CAP_PROP_FPS) or 30
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         frame_count = 0
+        loop_start = time.time()
 
         while cap.isOpened() and self.analyzing:
             ret, frame = cap.read()
@@ -652,10 +689,14 @@ class MainDashboard(ctk.CTkFrame):
                                 probs = torch.softmax(out, dim=1)[0].cpu().numpy()
 
                             biased_probs = probs.copy()
-                            biased_probs[2] += 0.05
-                            biased_probs[1] += 0.03
+                            if len(biased_probs) > 2:
+                                biased_probs[2] += 0.05
+                            if len(biased_probs) > 1:
+                                biased_probs[1] += 0.03
 
-                            action_labels = ["Idle", "Sprinting", "Kicking"]
+                            action_labels = list(self.action_counts.keys())
+                            if not action_labels:
+                                action_labels = ["Idle", "Sprinting", "Kicking"]
                             best_idx = int(biased_probs.argmax())
                             action_name = action_labels[best_idx]
                             action_conf = float(probs[best_idx])
@@ -694,7 +735,8 @@ class MainDashboard(ctk.CTkFrame):
                     self.video_player.lbl_frame_info.configure(text=f"{frame_count} / {total_frames}")
 
                 if all_probs:
-                    action_str = f"F{frame_count}: {action_name} | Idle:{all_probs['Idle']}% Sprint:{all_probs['Sprinting']}% Kick:{all_probs['Kicking']}% | {num_detections}P"
+                    al = list(all_probs.keys())
+                    action_str = f"F{frame_count}: {action_name} | " + " ".join([f"{a[:6]}:{all_probs[a]}%" for a in al[:min(3, len(al))]]) + f" | {num_detections}P"
                 else:
                     action_str = f"F{frame_count}: {action_name} | {num_detections} det"
 
@@ -705,14 +747,29 @@ class MainDashboard(ctk.CTkFrame):
                 })
 
                 if all_probs:
-                    log_line = (f"▸ F{frame_count:>4d} │ {num_detections}P │ "
-                                f"Idle:{all_probs['Idle']:>3d}% │ Sprint:{all_probs['Sprinting']:>3d}% │ "
-                                f"Kick:{all_probs['Kicking']:>3d}% │ ➜ {action_name}")
+                    al = list(all_probs.keys())
+                    log_line = (f"▸ F{frame_count:>4d} │ {num_detections}P │ " +
+                                " │ ".join([f"{a[:4]}:{all_probs[a]:>3d}%" for a in al[:min(3, len(al))]]) +
+                                f" │ ➜ {action_name}")
                 else:
                     log_line = f"▸ F{frame_count:>4d} │ {num_detections}P │ {action_name}"
                 if det_details:
                     log_line += f" │ {det_details}"
                 self.log_to_console(log_line)
+
+                elapsed_loop = time.time() - loop_start
+                if elapsed_loop > 0 and frame_count > 0:
+                    actual_fps = frame_count / elapsed_loop
+                    try:
+                        self.console_dashboard.set_metric("fps", f"{actual_fps:.1f}")
+                    except Exception:
+                        pass
+                if total_frames > 0:
+                    progress_pct = (frame_count / total_frames) * 100
+                    try:
+                        self.console_dashboard.set_metric("progress", f"{progress_pct:.1f}%")
+                    except Exception:
+                        pass
 
             except Exception as e:
                 self.log_to_console(f"[ERROR] Frame {frame_count}: {e}")
@@ -727,8 +784,19 @@ class MainDashboard(ctk.CTkFrame):
         self.log_to_console(f"[DONE] Analyzed {frame_count} frames. Actions: {self.action_counts}")
 
     def generate_report(self):
+        from tkinter import messagebox, filedialog
+        import os
+        
         if self.total_analyzed_frames == 0:
             messagebox.showwarning("No Data", "Analyze a video first before generating a report.")
+            return
+
+        default_name = f"{getattr(self, 'sport', 'Match')}_Analysis_Report.pdf"
+        file_path = filedialog.asksaveasfilename(defaultextension=".pdf", 
+                                                 initialfile=default_name,
+                                                 title="Save PDF Report",
+                                                 filetypes=[("PDF files", "*.pdf")])
+        if not file_path:
             return
 
         self.lbl_status.configure(text="Status: Generating PDF...", text_color="blue")
@@ -737,18 +805,22 @@ class MainDashboard(ctk.CTkFrame):
             sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
             from core.ReportGenerator import ReportGenerator
 
-            gen = ReportGenerator(output_dir=str(Path(__file__).resolve().parent.parent / "reports"))
+            out_dir = os.path.dirname(file_path)
+            file_name = os.path.basename(file_path)
+
+            gen = ReportGenerator(output_dir=out_dir)
 
             stats = {
                 "action_counts": self.action_counts,
                 "total_frames": self.total_analyzed_frames,
+                "sport": getattr(self, 'sport', 'Football'),
+                "analysis_data": self.analysis_data
             }
             video_name = Path(self.video_path).name if self.video_path else "Unknown"
-            report_path = gen.generate_report("match_report.pdf", stats, video_name=video_name)
+            report_path = gen.generate_report(file_name, stats, video_name=video_name)
 
-            messagebox.showinfo("Report Generated", f"Report saved to:\n{report_path}")
-            self.lbl_status.configure(text="Status: Report Saved", text_color="green")
-
+            messagebox.showinfo("Report Generated", f"PDF Report successfully saved to:\n{report_path}")
+            self.lbl_status.configure(text="Status: Analysis Complete", text_color="green")
         except Exception as e:
-            messagebox.showerror("Report Error", f"Failed to generate report:\n{e}")
-            self.lbl_status.configure(text="Status: Report Failed", text_color="red")
+            messagebox.showerror("Export Error", f"Failed to generate PDF Report:\n{str(e)}")
+            self.lbl_status.configure(text="Status: Report Generation Failed", text_color="red")

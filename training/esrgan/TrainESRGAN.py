@@ -2,6 +2,7 @@ import os
 import argparse
 import time
 import threading
+import shutil
 from pathlib import Path
 
 import torch
@@ -13,7 +14,6 @@ from ESRGANModel import RRDBNet, VGGDiscriminator
 from LossFunctions import ESRGANLoss, PSNRLoss, calculate_psnr
 from DatasetLoader import DatasetLoader
 import sys
-from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from Visualization import plot_loss_curves, plot_gan_loss, plot_psnr_curve
@@ -61,7 +61,7 @@ def get_config():
 
     return config
 
-def train_phase1(args, log=print, stop_event=None):
+def train_phase1(args, log=print, stop_event=None, progress_callback=None):
     log("=" * 60)
     log(" ESRGAN Phase 1: PSNR Pre-training")
     log("=" * 60)
@@ -83,6 +83,8 @@ def train_phase1(args, log=print, stop_event=None):
     scheduler = CosineAnnealingLR(optimizer, T_max=args.epochs, eta_min=1e-7)
 
     ckpt_dir = Path(args.checkpoint_dir)
+    if hasattr(args, 'sport') and args.sport:
+        ckpt_dir = ckpt_dir / args.sport.lower()
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     history_loss = []
@@ -104,7 +106,7 @@ def train_phase1(args, log=print, stop_event=None):
 
             sr_imgs = generator(lr_imgs)
             loss = criterion(sr_imgs, hr_imgs)
-            
+
             with torch.no_grad():
                 psnr = calculate_psnr(sr_imgs, hr_imgs)
 
@@ -125,15 +127,18 @@ def train_phase1(args, log=print, stop_event=None):
         log(f"Epoch [{epoch}/{args.epochs}] | L1 Loss: {avg_loss:.6f} | PSNR: {avg_psnr:.2f} dB | "
             f"LR: {scheduler.get_last_lr()[0]:.2e} | Time: {elapsed:.1f}s")
 
+        if progress_callback:
+            progress_callback(epoch, args.epochs)
+
         if epoch % args.save_every == 0:
             path = str(ckpt_dir / f"phase1_gen_epoch{epoch}.pth")
             torch.save(generator.state_dict(), path)
             log(f"  -> Saved checkpoint: {path}")
-            
+
             try:
-                plot_loss_curves(history_loss, title="ESRGAN Phase 1 Loss", 
+                plot_loss_curves(history_loss, title="ESRGAN Phase 1 Loss",
                                  filename="esrgan_phase1_loss.png", save_dir=str(ckpt_dir))
-                plot_psnr_curve(history_psnr, title="ESRGAN Phase 1 PSNR", 
+                plot_psnr_curve(history_psnr, title="ESRGAN Phase 1 PSNR",
                                 filename="esrgan_phase1_psnr.png", save_dir=str(ckpt_dir))
             except Exception as e:
                 log(f"  -> Could not plot loss: {e}")
@@ -141,16 +146,24 @@ def train_phase1(args, log=print, stop_event=None):
     final_path = str(ckpt_dir / "phase1_gen.pth")
     torch.save(generator.state_dict(), final_path)
     try:
-        plot_loss_curves(history_loss, title="ESRGAN Phase 1 Loss", 
+        plot_loss_curves(history_loss, title="ESRGAN Phase 1 Loss",
                          filename="esrgan_phase1_loss.png", save_dir=str(ckpt_dir))
-        plot_psnr_curve(history_psnr, title="ESRGAN Phase 1 PSNR", 
+        plot_psnr_curve(history_psnr, title="ESRGAN Phase 1 PSNR",
                         filename="esrgan_phase1_psnr.png", save_dir=str(ckpt_dir))
     except:
         pass
-    log(f"Phase 1 complete! Final model: {final_path}")
+
+    if hasattr(args, 'sport') and args.sport:
+        dest_dir = Path(__file__).resolve().parent.parent.parent / "models" / args.sport.lower()
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(final_path, str(dest_dir / "esrgan_phase1_gen.pth"))
+        log(f"Phase 1 complete! Final model copied to {dest_dir / 'esrgan_phase1_gen.pth'}")
+    else:
+        log(f"Phase 1 complete! Final model: {final_path}")
+
     return final_path
 
-def train_phase2(args, log=print, stop_event=None):
+def train_phase2(args, log=print, stop_event=None, progress_callback=None):
     log("=" * 60)
     log(" ESRGAN Phase 2: GAN Fine-tuning")
     log("=" * 60)
@@ -180,6 +193,8 @@ def train_phase2(args, log=print, stop_event=None):
     scheduler_disc = CosineAnnealingLR(opt_disc, T_max=args.epochs, eta_min=1e-7)
 
     ckpt_dir = Path(args.checkpoint_dir)
+    if hasattr(args, 'sport') and args.sport:
+        ckpt_dir = ckpt_dir / args.sport.lower()
     ckpt_dir.mkdir(parents=True, exist_ok=True)
 
     history_g_loss = []
@@ -242,6 +257,9 @@ def train_phase2(args, log=print, stop_event=None):
         log(f"Epoch [{epoch}/{args.epochs}] | G Loss: {avg_g:.4f} | D Loss: {avg_d:.4f} | "
             f"Time: {elapsed:.1f}s")
 
+        if progress_callback:
+            progress_callback(epoch, args.epochs)
+
         if epoch % args.save_every == 0:
             gen_path = str(ckpt_dir / f"phase2_gen_epoch{epoch}.pth")
             disc_path = str(ckpt_dir / f"phase2_disc_epoch{epoch}.pth")
@@ -254,16 +272,26 @@ def train_phase2(args, log=print, stop_event=None):
             except Exception as e:
                 log(f"  -> Could not plot loss: {e}")
 
-    torch.save(generator.state_dict(), str(ckpt_dir / "esrgan_generator.pth"))
-    torch.save(discriminator.state_dict(), str(ckpt_dir / "esrgan_discriminator.pth"))
+    gen_final = str(ckpt_dir / "esrgan_generator.pth")
+    disc_final = str(ckpt_dir / "esrgan_discriminator.pth")
+    torch.save(generator.state_dict(), gen_final)
+    torch.save(discriminator.state_dict(), disc_final)
     try:
         plot_gan_loss(history_g_loss, history_d_loss, title="ESRGAN Phase 2 GAN Loss",
                       filename="esrgan_gan_loss.png", save_dir=str(ckpt_dir))
     except:
         pass
-    log(f"Phase 2 complete! Final models saved in {args.checkpoint_dir}/")
 
-def train_from_gui(config_dict, log_callback=print, stop_event=None):
+    if hasattr(args, 'sport') and args.sport:
+        dest_dir = Path(__file__).resolve().parent.parent.parent / "models" / args.sport.lower()
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(gen_final, str(dest_dir / "esrgan_generator.pth"))
+        shutil.copy2(disc_final, str(dest_dir / "esrgan_discriminator.pth"))
+        log(f"Phase 2 complete! Final models copied to {dest_dir}/")
+    else:
+        log(f"Phase 2 complete! Final models saved in {args.checkpoint_dir}/")
+
+def train_from_gui(config_dict, log_callback=print, stop_event=None, progress_callback=None):
     args = argparse.Namespace(**config_dict)
     if not hasattr(args, 'save_every'):
         args.save_every = 5
@@ -273,9 +301,9 @@ def train_from_gui(config_dict, log_callback=print, stop_event=None):
         args.pretrained_gen = None
 
     if args.phase == 1:
-        return train_phase1(args, log=log_callback, stop_event=stop_event)
+        return train_phase1(args, log=log_callback, stop_event=stop_event, progress_callback=progress_callback)
     else:
-        return train_phase2(args, log=log_callback, stop_event=stop_event)
+        return train_phase2(args, log=log_callback, stop_event=stop_event, progress_callback=progress_callback)
 
 if __name__ == "__main__":
     config = get_config()
