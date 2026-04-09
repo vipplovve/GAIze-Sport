@@ -5,7 +5,7 @@ import torch.nn as nn
 import numpy as np
 
 class ActionLSTM(nn.Module):
-    def __init__(self, input_size=34, hidden_size=64, num_layers=2, num_classes=4):
+    def __init__(self, input_size=34, hidden_size=256, num_layers=3, num_classes=4):
         super(ActionLSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers

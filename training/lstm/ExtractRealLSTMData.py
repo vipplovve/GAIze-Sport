@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 from ultralytics import YOLO
 
-def extract_lstm_data_from_videos(source_dir, output_dir, sport="football", seq_len=30, log_callback=None, stop_event=None):
+def extract_lstm_data_from_videos(source_dir, output_dir, sport="football", seq_len=30, scale_data=False, log_callback=None, stop_event=None):
     source_dir = Path(source_dir)
     output_dir = Path(output_dir)
 
@@ -123,6 +123,29 @@ def extract_lstm_data_from_videos(source_dir, output_dir, sport="football", seq_
 
     data_matrix = np.array(all_sequences, dtype=np.float32)
     labels_matrix = np.array(all_labels, dtype=np.int64)
+
+    if scale_data:
+        msg = "[INFO] Scaling data using StandardScaler..."
+        if log_callback: log_callback(msg)
+        else: print(msg)
+        try:
+            from sklearn.preprocessing import StandardScaler
+            import joblib
+            original_shape = data_matrix.shape
+            data_2d = data_matrix.reshape(original_shape[0], -1)
+            scaler = StandardScaler()
+            data_2d_scaled = scaler.fit_transform(data_2d)
+            data_matrix = data_2d_scaled.reshape(original_shape)
+            sport_l = sport.lower()
+            scaler_path = output_dir / f"lstm_scaler_{sport_l}.pkl"
+            joblib.dump(scaler, str(scaler_path))
+            msg = f"[INFO] Saved StandardScaler to {scaler_path.name}"
+            if log_callback: log_callback(msg)
+            else: print(msg)
+        except ImportError:
+            msg = "[ERROR] scikit-learn or joblib not installed. Cannot scale data."
+            if log_callback: log_callback(msg)
+            else: print(msg)
 
     msg = "[INFO] Shuffling dataset..."
     if log_callback: log_callback(msg)

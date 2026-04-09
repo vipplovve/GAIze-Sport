@@ -90,28 +90,22 @@ def setup_yolo_dataset(source_dir, output_dir, model_path=None, val_split=0.2,
                 boxes = results[0].boxes.xywhn.cpu().numpy()
                 confs = results[0].boxes.conf.cpu().numpy()
                 
-                # Check for keypoints (pose estimation)
                 has_kpts = False
                 if hasattr(results[0], 'keypoints') and results[0].keypoints is not None:
-                    # xyn shape: (num_boxes, num_keypoints, 2)
                     kpts = results[0].keypoints.xyn.cpu().numpy()
                     has_kpts = len(kpts) > 0
 
                 for j, (box, conf) in enumerate(zip(boxes, confs)):
                     if conf < 0.3:
                         continue
-                        
-                    # Standard detection part: class_id x_center y_center width height
+
                     x_center, y_center, bw, bh = box
                     label_line = f"0 {x_center:.6f} {y_center:.6f} {bw:.6f} {bh:.6f}"
-                    
-                    # Add keypoints if available
+
                     if has_kpts:
-                        # For each keypoint: x y visibility (2 = visible, 0 = not present)
                         kp_line = ""
                         for kp in kpts[j]:
                             kx, ky = kp
-                            # If keypoint is (0,0), it's usually not detected/missing
                             visibility = 2 if (kx > 0 or ky > 0) else 0
                             kp_line += f" {kx:.6f} {ky:.6f} {visibility}"
                         label_line += kp_line

@@ -483,7 +483,7 @@ class MainDashboard(ctk.CTkFrame):
         if self.sport == "Basketball":
             self.action_counts = {"Idle": 0, "Dribbling": 0, "Shooting": 0, "Guarding": 0, "Dunking": 0}
         else:
-            self.action_counts = {"Idle": 0, "Sprinting": 0, "Kicking": 0}
+            self.action_counts = {"Idle": 0, "Sprinting": 0, "Kicking": 0, "Dribbling": 0}
         self.lbl_status.configure(text="Status: Video Loaded", text_color="green")
         self.start_analysis()
 
@@ -551,7 +551,7 @@ class MainDashboard(ctk.CTkFrame):
 
                         action_labels = list(self.action_counts.keys())
                         if not action_labels:
-                            action_labels = ["Idle", "Sprinting", "Kicking"]
+                            action_labels = ["Idle", "Sprinting", "Kicking", "Dribbling"]
                         best_idx = int(biased_probs.argmax())
                         best_action = action_labels[best_idx]
 
@@ -696,7 +696,7 @@ class MainDashboard(ctk.CTkFrame):
 
                             action_labels = list(self.action_counts.keys())
                             if not action_labels:
-                                action_labels = ["Idle", "Sprinting", "Kicking"]
+                                action_labels = ["Idle", "Sprinting", "Kicking", "Dribbling"]
                             best_idx = int(biased_probs.argmax())
                             action_name = action_labels[best_idx]
                             action_conf = float(probs[best_idx])

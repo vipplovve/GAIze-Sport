@@ -389,7 +389,7 @@ class TrainingPanel(ctk.CTkFrame):
     def _build_lstm_tab(self):
         tab = self.tabview.tab("LSTM")
         tab.grid_columnconfigure(1, weight=1)
-        tab.grid_rowconfigure(14, weight=1)
+        tab.grid_rowconfigure(15, weight=1)
 
         ctk.CTkLabel(tab, text="LSTM Action Recognition Training",
                      font=("Roboto", 16, "bold")).grid(row=0, column=0, columnspan=3, pady=(10, 5))
@@ -414,11 +414,15 @@ class TrainingPanel(ctk.CTkFrame):
         self.lstm_classes = self._make_field(tab, "Num Classes:", "4", 10)
         self.lstm_ckpt = self._make_field(tab, "Checkpoint Dir:", lstm_ckpt_dir, 11, browse_dir=True)
 
+        self.lstm_scale_data_var = ctk.BooleanVar(value=True)
+        self.lstm_scale_checkbox = ctk.CTkCheckBox(tab, text="Scale Extracted Data (StandardScaler)", variable=self.lstm_scale_data_var, font=("Roboto", 12))
+        self.lstm_scale_checkbox.grid(row=12, column=0, columnspan=3, padx=10, pady=4, sticky="w")
+
         self.lstm_start, self.lstm_stop_btn, self.lstm_progress, self.lstm_status = \
-            self._make_controls(tab, self._start_lstm, 12)
+            self._make_controls(tab, self._start_lstm, 13)
             
         btn_frame = ctk.CTkFrame(tab, fg_color="transparent")
-        btn_frame.grid(row=13, column=0, columnspan=3, pady=5)
+        btn_frame.grid(row=14, column=0, columnspan=3, pady=5)
 
         self.btn_extract_lstm_data = ctk.CTkButton(btn_frame, text="⚙ Extract Dataset from Clips", 
                                                    command=self._start_lstm_extraction,
@@ -436,7 +440,7 @@ class TrainingPanel(ctk.CTkFrame):
         self.btn_view_lstm_metrics.pack(side="left", padx=5)
 
         self.lstm_dashboard = TrainingDashboard(tab, preset=PRESET_LSTM)
-        self.lstm_dashboard.grid(row=14, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
+        self.lstm_dashboard.grid(row=15, column=0, columnspan=3, sticky="nsew", padx=5, pady=5)
 
     def _start_lstm(self):
         if self._is_training():
@@ -498,6 +502,7 @@ class TrainingPanel(ctk.CTkFrame):
         self.lstm_status.configure(text="Extracting...", text_color="orange")
         
         sport_val = self.lstm_sport_var.get()
+        scale_val = self.lstm_scale_data_var.get()
 
         def run():
             try:
@@ -507,6 +512,7 @@ class TrainingPanel(ctk.CTkFrame):
                     output_dir=out_dir,
                     sport=sport_val,
                     seq_len=30,
+                    scale_data=scale_val,
                     log_callback=lambda t: self.lstm_dashboard.log(t),
                     stop_event=self.stop_event
                 )

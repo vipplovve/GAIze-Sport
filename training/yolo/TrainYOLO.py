@@ -29,11 +29,9 @@ def train_from_gui(config_dict, log_callback=print, stop_event=None, progress_ca
 
     frames_dir = config_dict.get('frames_dir', '')
 
-    # Check if we need to setup/re-setup the dataset
     needs_setup = not data_yaml or not Path(data_yaml).exists()
     
     if not needs_setup and "pose" in str(base_model).lower():
-        # Check if kpt_shape is in the existing YAML
         try:
             with open(data_yaml, 'r') as f:
                 content = f.read()
@@ -132,7 +130,18 @@ if __name__ == "__main__":
     epochs = int(input("Epochs [50]: ").strip() or "50")
     imgsz = int(input("Image size [640]: ").strip() or "640")
     batch = int(input("Batch size [8]: ").strip() or "8")
-    device = input("Device (cpu/0) [cpu]: ").strip() or "cpu"
+    device_choice = input("Select training device (cpu/cuda) [cuda]: ").strip().lower() or "cuda"
+    
+    if device_choice == "cuda":
+        import torch
+        if torch.cuda.is_available():
+            device = "0"
+            print(f" [INFO] CUDA detected! Using device: {torch.cuda.get_device_name(0)}")
+        else:
+            print(" [WARN] CUDA selected but not available. Falling back to CPU.")
+            device = "cpu"
+    else:
+        device = "cpu"
 
     config = {
         'base_model': base_model,
