@@ -18,6 +18,20 @@ from pathlib import Path
 import time
 
 
+MODEL_DEFAULTS = {
+    "Football": {
+        "yolo": "models & metrics/football/yolo-finetuned/Football YOLO Fine-Tuned Model.pt",
+        "lstm": "models & metrics/football/lstm/Football LSTM Action Recognition Model.pth",
+        "esrgan": "models & metrics/football/esrgan/Football ESRGAN Phase #2 Generator.pth"
+    },
+    "Basketball": {
+        "yolo": "models & metrics/basketball/yolo-finetuned/Basketball YOLO Fine-Tuned Model.pt",
+        "lstm": "models & metrics/basketball/lstm/LSTM Basketball Action Recognition Model.pth",
+        "esrgan": "models & metrics/basketball/esrgan/Basketball ESRGAN Phase #2 Generator.pth"
+    }
+}
+
+
 class MainDashboard(ctk.CTkFrame):
     def __init__(self, master, on_logout=None, **kwargs):
         super().__init__(master, **kwargs)
@@ -366,18 +380,23 @@ class MainDashboard(ctk.CTkFrame):
             pcts = {k: int(v / total_actions * 100) for k, v in self.action_counts.items()}
 
             assessment_lines.append(f"• Analyzed {self.total_analyzed_frames} frames with an average of {avg_det:.0f} person(s) detected per frame.")
-            if len(actions) >= 3:
-                assessment_lines.append(f"• Action breakdown: {actions[0]} {pcts[actions[0]]}%, {actions[1]} {pcts[actions[1]]}%, {actions[2]} {pcts[actions[2]]}%.")
+            breakdown_str = ", ".join(f"{a} {pcts[a]}%" for a in actions)
+            assessment_lines.append(f"• Action breakdown: {breakdown_str}.")
 
-                if pcts[actions[1]] > 40:
-                    assessment_lines.append(f"• High {actions[1].lower()} activity detected — indicates an intense, fast-paced game.")
-                elif pcts[actions[0]] > 60:
-                    assessment_lines.append(f"• Mostly {actions[0].lower()} activity — the footage may contain limited player movement.")
-                else:
-                    assessment_lines.append("• Balanced activity mix — players show varied movement patterns.")
+            idle_pct = pcts.get("Idle", 0)
+            non_idle_pct = 100 - idle_pct
+            if non_idle_pct >= 60:
+                assessment_lines.append(f"• High activity ({non_idle_pct}% non-idle) — indicates an intense, fast-paced game.")
+            elif non_idle_pct >= 30:
+                assessment_lines.append(f"• Moderate activity — balanced movement patterns.")
+            else:
+                assessment_lines.append(f"• Low activity ({non_idle_pct}% non-idle) — limited player movement.")
 
-                if pcts[actions[2]] > 20:
-                    assessment_lines.append(f"• Significant {actions[2].lower()} activity — likely key moments with ball interaction.")
+            for a_name in actions:
+                if a_name == "Idle":
+                    continue
+                if pcts.get(a_name, 0) > 20:
+                    assessment_lines.append(f"• Significant {a_name.lower()} activity ({pcts[a_name]}%) — key moments captured.")
 
             if avg_det >= 5:
                 assessment_lines.append(f"• Dense scene with ~{avg_det:.0f} persons/frame — good for tactical analysis.")
@@ -481,7 +500,7 @@ class MainDashboard(ctk.CTkFrame):
         self.analysis_config = config
         self.sport = config.get("sport", "Football")
         if self.sport == "Basketball":
-            self.action_counts = {"Idle": 0, "Dribbling": 0, "Shooting": 0, "Guarding": 0, "Dunking": 0}
+            self.action_counts = {"Idle": 0, "Dribbling": 0, "Shooting": 0, "Guarding": 0}
         else:
             self.action_counts = {"Idle": 0, "Sprinting": 0, "Kicking": 0, "Dribbling": 0}
         self.lbl_status.configure(text="Status: Video Loaded", text_color="green")
@@ -579,16 +598,20 @@ class MainDashboard(ctk.CTkFrame):
 
         config = getattr(self, "analysis_config", {})
         sport = config.get("sport", "Football")
-        base_models = Path(__file__).resolve().parent.parent / "models"
+        project_root = Path(__file__).resolve().parent.parent
+        
+        defaults = MODEL_DEFAULTS.get(sport, MODEL_DEFAULTS["Football"])
         
         raw_yolo = config.get("yolo_path", "")
-        yolo_path = raw_yolo if raw_yolo else str(base_models / "yolo11n-pose.pt")
+        yolo_path = raw_yolo if raw_yolo else str(project_root / defaults["yolo"])
         
-        lstm_path = config.get("lstm_path", None)
+        lstm_path = config.get("lstm_path", "")
+        if not lstm_path:
+            lstm_path = str(project_root / defaults["lstm"])
         
         use_esrgan = config.get("use_esrgan", False)
         raw_esrgan = config.get("esrgan_path", "")
-        esrgan_path = raw_esrgan if raw_esrgan else str(base_models / "ESRGAN Phase #2 Generator.pth")
+        esrgan_path = raw_esrgan if raw_esrgan else str(project_root / defaults["esrgan"])
         
         self.log_to_console(f"[INFO] Loading YOLOv11 pose model ({Path(yolo_path).name}) for {sport}...")
         self.analyzer = VideoAnalyticsEngine(model_path=yolo_path, lstm_model=lstm_path, sport=sport)
@@ -736,7 +759,7 @@ class MainDashboard(ctk.CTkFrame):
 
                 if all_probs:
                     al = list(all_probs.keys())
-                    action_str = f"F{frame_count}: {action_name} | " + " ".join([f"{a[:6]}:{all_probs[a]}%" for a in al[:min(3, len(al))]]) + f" | {num_detections}P"
+                    action_str = f"F{frame_count}: {action_name} | " + " ".join([f"{a[:6]}:{all_probs[a]}%" for a in al]) + f" | {num_detections}P"
                 else:
                     action_str = f"F{frame_count}: {action_name} | {num_detections} det"
 
@@ -749,7 +772,7 @@ class MainDashboard(ctk.CTkFrame):
                 if all_probs:
                     al = list(all_probs.keys())
                     log_line = (f"▸ F{frame_count:>4d} │ {num_detections}P │ " +
-                                " │ ".join([f"{a[:4]}:{all_probs[a]:>3d}%" for a in al[:min(3, len(al))]]) +
+                                " │ ".join([f"{a[:4]}:{all_probs[a]:>3d}%" for a in al]) +
                                 f" │ ➜ {action_name}")
                 else:
                     log_line = f"▸ F{frame_count:>4d} │ {num_detections}P │ {action_name}"

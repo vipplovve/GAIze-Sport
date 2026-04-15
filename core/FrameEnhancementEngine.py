@@ -15,7 +15,6 @@ class FrameEnhancementEngine:
 
     def load_model(self):
         from ESRGANModel import RRDBNet
-
         print(f"Loading ESRGAN model from {self.model_path}...")
         try:
             self.model = RRDBNet(num_blocks=self.num_blocks).to(self.device)
@@ -59,9 +58,7 @@ class FrameEnhancementEngine:
 
         target_w = orig_w * 4
         target_h = orig_h * 4
-
-        final_bgr = cv2.resize(sr_bgr, (target_w, target_h), interpolation=cv2.INTER_LANCZOS4)
-        return final_bgr
+        return cv2.resize(sr_bgr, (target_w, target_h), interpolation=cv2.INTER_LANCZOS4)
 
     def enhance_video(self, video_path, output_path):
         cap = cv2.VideoCapture(video_path)
@@ -78,10 +75,7 @@ class FrameEnhancementEngine:
             ret, frame = cap.read()
             if not ret:
                 break
-
-            enhanced = self.enhance_frame(frame)
-            writer.write(enhanced)
-
+            writer.write(self.enhance_frame(frame))
             frame_count += 1
             if frame_count % 10 == 0:
                 print(f"Enhanced {frame_count}/{total} frames...")

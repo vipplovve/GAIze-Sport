@@ -23,8 +23,8 @@ class ActionRecognitionEngine:
     def __init__(self, model_path=None, class_weights=None, sport="Football"):
         self.input_size = 34
         if sport == "Basketball":
-            self.num_classes = 5
-            self.classes = ["Idle", "Dribbling", "Shooting", "Guarding", "Dunking"]
+            self.num_classes = 4
+            self.classes = ["Idle", "Dribbling", "Shooting", "Guarding"]
         else:
             self.num_classes = 4
             self.classes = ["Idle", "Sprinting", "Kicking", "Dribbling"]
@@ -41,7 +41,7 @@ class ActionRecognitionEngine:
 
         if class_weights is None:
             if sport == "Basketball":
-                self.class_weights = torch.tensor([0.7, 1.2, 2.0, 1.5, 2.0], dtype=torch.float32)
+                self.class_weights = torch.tensor([0.7, 1.2, 2.0, 1.5], dtype=torch.float32)
             else:
                 self.class_weights = torch.tensor([0.7, 1.5, 2.0, 1.3], dtype=torch.float32)
         else:
