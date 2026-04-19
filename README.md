@@ -78,6 +78,9 @@ pip install -r requirements.txt
 python GAIze-Sport.py
 ```
 
+> [!IMPORTANT]
+> GAIze-Sport is developed strictly for academic, research, and educational purposes. It is a proof-of-concept for localized AI in sports science. This software is not intended for commercial broadcasting, sports betting, or other such applications. Any use of this tool to facilitate unauthorized data scraping or betting-related analytics is strictly prohibited. The software is provided "as-is" without any warranty. The author assumes no responsibility for any tactical, physical, or legal consequences resulting from the application of these AI-generated insights.
+
 ## 📜 Attribution & License
 Copyright © 2026 Viplove Tyagi. This project is licensed under AGPL-3.0. Models were trained and fine-tuned using CC-BY footage from lozzzproductionz (Football) and SportsAlgo (Basketball). Full information available in Datasources.md.
 
