@@ -24,7 +24,7 @@ By cascading super-resolution, pose estimation, and temporal sequence modeling, 
 
 ---
 
-## 🏗️ Project Architecture: The "Inference Cascade"
+## 🏗️ Project Architecture
 
 The system operates as a sequential pipeline where each stage adds a layer of intelligence to the raw pixel data:
 
@@ -47,26 +47,11 @@ The system operates as a sequential pipeline where each stage adds a layer of in
 
 ---
 
-## 💻 Tech Stack
+## 💻 Languages & Core Tools
 
 <p align="center">
-  <strong>Languages & Core Tools</strong><br>
   <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=cpp,python,go,linux,bash,vim,vscode,git" />
-  </a>
-</p>
-
-<p align="center">
-  <strong>AI, ML & Data Engineering</strong><br>
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=pytorch,tensorflow,keras,opencv,sklearn,numpy,pandas" />
-  </a>
-</p>
-
-<p align="center">
-  <strong>Backend & Deployment</strong><br>
-  <a href="https://skillicons.dev">
-    <img src="https://skillicons.dev/icons?i=mysql,django,flask,postman,docker" />
+    <img src="https://skillicons.dev/icons?i=pytorch,opencv,python,linux,bash,vscode,git" />
   </a>
 </p>
 
