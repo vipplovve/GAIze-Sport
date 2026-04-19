@@ -125,20 +125,28 @@ class MetricCard(ctk.CTkFrame):
 
         self._header = ctk.CTkLabel(
             self, text=f"{icon}  {label}",
-            font=("Roboto", 10), text_color="#6e7681", anchor="w"
+            font=("Segoe UI", 12), text_color="#6e7681", anchor="w"
         )
         self._header.grid(row=0, column=0, padx=10, pady=(7, 0), sticky="w")
 
         self._value = ctk.CTkLabel(
             self, text="—",
-            font=("Consolas", 17, "bold"), text_color=value_color, anchor="w"
+            font=("Segoe UI", 22, "bold"), text_color=value_color, anchor="w"
         )
         self._value.grid(row=1, column=0, padx=10, pady=(0, 7), sticky="w")
 
     def set_value(self, text, color=None):
+        current_text = self._value.cget("text")
+        target_color = color or self._value.cget("text_color")
+        
         self._value.configure(text=str(text))
         if color:
             self._value.configure(text_color=color)
+            
+        if current_text != str(text) and current_text != "—":
+
+            self._value.configure(text_color="#ffffff")
+            self.after(150, lambda: self._value.configure(text_color=target_color))
 
 PRESET_ESRGAN = {
     "metrics": [
@@ -226,7 +234,7 @@ class TrainingDashboard(ctk.CTkFrame):
         log_border.grid(row=2, column=0, sticky="nsew", padx=0, pady=0)
 
         self._log = ctk.CTkTextbox(
-            log_border, font=("Consolas", 10),
+            log_border, font=("Consolas", 13),
             fg_color="#0d1117", text_color="#8b949e",
             state="disabled", wrap="word"
         )

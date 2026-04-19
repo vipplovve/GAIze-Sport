@@ -6,15 +6,11 @@ from ui.MainDashboard import MainDashboard
 class SportsAnalysisApp(ctk.CTk):
     def __init__(self):
         super().__init__()
-        
         self.title("GAIze-Sport — AI Sports Video Analysis")
         self.geometry("1100x700")
-        
         setup_theme()
-        
         self.grid_rowconfigure(0, weight=1)
         self.grid_columnconfigure(0, weight=1)
-
         self.current_screen = None
         self.show_login()
 

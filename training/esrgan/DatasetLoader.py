@@ -92,16 +92,4 @@ class VideoFrameDataset(DatasetLoader):
         cap.release()
         return saved_count
 
-if __name__ == "__main__":
-    test_dir = Path("test_hr_images")
-    test_dir.mkdir(parents=True, exist_ok=True)
-    
-    for i in range(5):
-        img = Image.fromarray(np.random.randint(0, 255, (256, 256, 3), dtype=np.uint8))
-        img.save(str(test_dir / f"test_{i}.png"))
-    
-    dataset = DatasetLoader(str(test_dir), hr_crop_size=128, scale_factor=4)
-    lr, hr = dataset[0]
-    
-    import shutil
-    shutil.rmtree(str(test_dir))
+

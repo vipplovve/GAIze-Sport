@@ -122,7 +122,7 @@ def train(args, log=print, stop_event=None, progress_callback=None):
 
     sport_name = getattr(args, "sport", "Football")
     if sport_name == "Basketball":
-        class_names = ["Idle", "Dribbling", "Shooting"]
+        class_names = ["Idle", "Dribbling", "Shooting", "Guarding"]
     else:
         class_names = ["Idle", "Sprinting", "Kicking", "Dribbling"]
 

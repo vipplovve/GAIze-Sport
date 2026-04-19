@@ -114,7 +114,7 @@ class LoginScreen(ctk.CTkFrame):
             self.lbl_error.configure(text="⚠  Please enter both username and password.")
             return
 
-        if (username == "viplove") and (password == "skrrtskrrt"):
+        if (username == "admin") and (password == "password"):
             self.on_login_success(username)
         else:
             self.lbl_error.configure(text="⚠  Invalid credentials. Please try again.")

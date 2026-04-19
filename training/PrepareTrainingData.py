@@ -220,32 +220,7 @@ def generate_guarding(num_frames=30):
         sequence.append(np.clip(pose, 0, 1))
     return np.array(sequence)
 
-def generate_dunking(num_frames=30):
-    sequence = []
-    jump_frame = int(num_frames * 0.3)
-    peak_frame = int(num_frames * 0.6)
-    for t in range(num_frames):
-        pose = BASE_POSE.copy()
-        if t < jump_frame:
-            squat = t / jump_frame
-            pose[13, 1] += squat * 0.1
-            pose[14, 1] += squat * 0.1
-        elif t < peak_frame:
-            rise = (t - jump_frame) / (peak_frame - jump_frame)
-            pose[:, 1] -= rise * 0.3
-            pose[9, 1] -= rise * 0.3
-            pose[10, 1] -= rise * 0.3
-            pose[13, 1] += 0.1 - (rise * 0.1)
-            pose[14, 1] += 0.1 - (rise * 0.1)
-        else:
-            fall = (t - peak_frame) / (num_frames - peak_frame)
-            pose[:, 1] -= 0.3 - (fall * 0.3)
-            pose[9, 1] -= 0.3 - (fall * 0.1)
-            pose[10, 1] -= 0.3 - (fall * 0.1)
-        noise = np.random.normal(0, 0.006, pose.shape).astype(np.float32)
-        pose += noise
-        sequence.append(np.clip(pose, 0, 1))
-    return np.array(sequence)
+
 
 def generate_lstm_data(sport="Football", samples_per_class=100):
     LSTM_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -254,7 +229,7 @@ def generate_lstm_data(sport="Football", samples_per_class=100):
     labels = []
 
     if sport == "Basketball":
-        generators = {0: generate_idle, 1: generate_dribbling, 2: generate_shooting, 3: generate_guarding, 4: generate_dunking}
+        generators = {0: generate_idle, 1: generate_dribbling, 2: generate_shooting, 3: generate_guarding}
         prefix = "basketball"
     else:
         generators = {0: generate_idle, 1: generate_sprinting, 2: generate_kicking, 3: generate_dribbling}

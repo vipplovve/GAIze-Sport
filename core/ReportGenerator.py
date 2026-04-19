@@ -9,7 +9,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-# Palette that scales to any number of actions
 DEFAULT_PALETTE = ["#2cc985", "#8ab4f8", "#e06c75", "#f0c040", "#bc8cff",
                    "#ff9f43", "#ee5a24", "#7ed6df", "#686de0", "#badc58"]
 
@@ -19,12 +18,8 @@ class ReportGenerator:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ------------------------------------------------------------------
-    # helpers
-    # ------------------------------------------------------------------
     @staticmethod
     def _build_color_maps(actions):
-        """Return (action_colors, action_map) for *any* number of actions."""
         action_colors = {a: DEFAULT_PALETTE[i % len(DEFAULT_PALETTE)]
                          for i, a in enumerate(actions)}
         action_colors["---"] = "#444444"
@@ -35,7 +30,6 @@ class ReportGenerator:
 
     @staticmethod
     def _wrapped_text(c, text, x, y, max_width, font_name="Helvetica", font_size=11, leading=14):
-        """Draw wrapped text on the canvas and return the new y position."""
         c.setFont(font_name, font_size)
         lines = simpleSplit(text, font_name, font_size, max_width)
         for line in lines:
@@ -47,11 +41,7 @@ class ReportGenerator:
             y -= leading
         return y
 
-    # ------------------------------------------------------------------
-    # AI Summary generation (rule-based, no external API)
-    # ------------------------------------------------------------------
     def _generate_ai_summary(self, stats):
-        """Build a multi-paragraph AI-style textual summary of the match."""
         sport = stats.get("sport", "Football")
         action_data = stats.get("action_counts", {})
         analysis_data = stats.get("analysis_data", {})
@@ -59,7 +49,6 @@ class ReportGenerator:
 
         paragraphs = []
 
-        # -- Overview --
         if total_frames > 0:
             avg_det = (sum(d["detections"] for d in analysis_data.values())
                        / max(len(analysis_data), 1)) if analysis_data else 0
@@ -73,7 +62,6 @@ class ReportGenerator:
             paragraphs.append("No frames were processed; the report contains no analysis data.")
             return paragraphs
 
-        # -- Action distribution narrative --
         total_actions = sum(action_data.values())
         if total_actions > 0:
             sorted_actions = sorted(action_data.items(), key=lambda x: x[1], reverse=True)
@@ -87,7 +75,6 @@ class ReportGenerator:
                 f"classified frames.  Full action distribution: {', '.join(breakdown_parts)}."
             )
 
-            # Intensity assessment
             idle_pct = int(action_data.get("Idle", 0) / total_actions * 100)
             non_idle_pct = 100 - idle_pct
 
@@ -107,7 +94,6 @@ class ReportGenerator:
                     "The footage may capture a stoppage, warm-up, or low-tempo phase."
                 )
 
-            # Per-action insights (all actions, not just 3)
             for action_name, count in sorted_actions:
                 pct = int(count / total_actions * 100)
                 if action_name == "Idle":
@@ -123,7 +109,6 @@ class ReportGenerator:
                         "contributing to the overall action complexity."
                     )
 
-        # -- Temporal patterns --
         if analysis_data:
             total = len(analysis_data)
             midpoint = total // 2
@@ -152,7 +137,6 @@ class ReportGenerator:
                     "Temporal analysis: activity is relatively consistent throughout the clip."
                 )
 
-        # -- Detection density --
         if analysis_data:
             det_values = [d["detections"] for d in analysis_data.values()]
             max_det = max(det_values)
@@ -171,9 +155,6 @@ class ReportGenerator:
         )
         return paragraphs
 
-    # ------------------------------------------------------------------
-    # main report
-    # ------------------------------------------------------------------
     def generate_report(self, filename, stats, video_name="Unknown"):
         filepath = str(self.output_dir / filename)
         c = canvas.Canvas(filepath, pagesize=letter)
@@ -184,7 +165,6 @@ class ReportGenerator:
         analysis_data = stats.get("analysis_data", {})
         total_frames = stats.get("total_frames", 0)
 
-        # ── Header ────────────────────────────────────────────────────
         c.setFillColorRGB(0.1, 0.1, 0.2)
         c.rect(0, height - 100, width, 100, fill=1)
 
@@ -198,7 +178,6 @@ class ReportGenerator:
 
         y = height - 140
 
-        # ── Match Summary ─────────────────────────────────────────────
         c.setFillColorRGB(0.1, 0.1, 0.2)
         c.setFont("Helvetica-Bold", 18)
         c.drawString(40, y, "Match Summary")
@@ -232,10 +211,8 @@ class ReportGenerator:
             c.drawString(40, y, f"Avg Detected Persons / Frame: {avg_det:.1f}")
             y -= 30
 
-            # -- build colour maps dynamically --
             action_colors, action_map = self._build_color_maps(actions)
 
-            # ── Pie Chart ─────────────────────────────────────────────
             fig1, ax1 = plt.subplots(figsize=(4, 3))
             labels = []
             sizes = []
@@ -256,7 +233,6 @@ class ReportGenerator:
             fig1.savefig(pie_path, dpi=150)
             plt.close(fig1)
 
-            # ── Timeline Chart ────────────────────────────────────────
             fig3, ax3 = plt.subplots(figsize=(8, 2.5))
             if analysis_data:
                 sorted_keys = sorted(analysis_data.keys())
@@ -278,7 +254,6 @@ class ReportGenerator:
             fig3.savefig(timeline_path, dpi=150)
             plt.close(fig3)
 
-            # ── Draw Pie + Breakdown side-by-side ─────────────────────
             if os.path.exists(pie_path):
                 c.drawImage(pie_path, 40, y - 200, width=240, height=180)
                 os.remove(pie_path)
@@ -300,7 +275,6 @@ class ReportGenerator:
 
             y -= 220
 
-            # ── Timeline image ────────────────────────────────────────
             if os.path.exists(timeline_path):
                 c.drawImage(timeline_path, 40, y - 180, width=480, height=150)
                 os.remove(timeline_path)
@@ -311,7 +285,6 @@ class ReportGenerator:
             c.drawString(40, y, "No action data available for this session.")
             y -= 40
 
-        # ── AI Assessment Summary (quick bullets) ─────────────────────
         y -= 20
         if y < 120:
             c.showPage()
@@ -338,7 +311,6 @@ class ReportGenerator:
             if total_act > 0:
                 pcts = {k: int(v / total_act * 100) for k, v in action_data.items()}
 
-                # List ALL action percentages in the breakdown line
                 breakdown_str = ", ".join(f"{a} {pcts[a]}%" for a in actions)
                 y = self._wrapped_text(c, f"• Action breakdown: {breakdown_str}.",
                                        40, y, width - 80, "Helvetica", 11, 15)
@@ -354,7 +326,6 @@ class ReportGenerator:
                     c.drawString(40, y, f"• Low activity ({non_idle_pct}% non-idle) — limited movement.")
                 y -= 18
 
-                # Mention every notable non-Idle action (not just index 2)
                 for i, action in enumerate(actions):
                     if action == "Idle":
                         continue
@@ -362,7 +333,6 @@ class ReportGenerator:
                         c.drawString(40, y, f"• Significant {action.lower()} activity ({pcts[action]}%) — key moments captured.")
                         y -= 18
 
-        # ── AI-Generated Summary (new section, multi-paragraph) ───────
         y -= 15
         if y < 120:
             c.showPage()
@@ -379,12 +349,11 @@ class ReportGenerator:
         c.setFillColorRGB(0.15, 0.15, 0.15)
         for para in ai_paragraphs:
             y = self._wrapped_text(c, para, 50, y, width - 100, "Helvetica", 10.5, 14)
-            y -= 8  # paragraph spacing
+            y -= 8
             if y < 60:
                 c.showPage()
                 y = height - 50
 
-        # ── Footer ────────────────────────────────────────────────────
         c.setFillColorRGB(0.5, 0.5, 0.5)
         c.setFont("Helvetica-Oblique", 10)
         c.drawString(40, 40, "Generated by GAIze-Sport — AI Sports Video Analysis engine.")

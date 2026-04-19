@@ -4,7 +4,7 @@
 
 ### AI-Powered Sports Video Analysis Platform
 
-**Real-Time Detection &nbsp;•&nbsp; Super-Resolution &nbsp;•&nbsp; Action Recognition &nbsp;•&nbsp; Tactical Analytics**
+**Real-time detection &nbsp;•&nbsp; Super-resolution &nbsp;•&nbsp; Action recognition &nbsp;•&nbsp; Tactical minimaps &nbsp;•&nbsp; PDF reports**
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python&logoColor=white)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.x-EE4C2C?logo=pytorch&logoColor=white)
@@ -37,8 +37,10 @@ The platform also includes a full **in-app model training suite** for all three 
 - 🎯 **YOLOv11 Pose Detection** — player tracking with 17-keypoint skeleton overlay
 - 🏃 **LSTM Action Recognition** — classifies actions from a rolling 30-frame keypoint buffer
 - ✨ **ESRGAN Super-Resolution** — optional 4× frame upscaling pre-inference
+- 🗺️ **2D Tactical Minimap** — live bird's-eye view of player positions
 - 📊 **Analytics Dashboard** — pie chart, bar chart, action timeline, and per-frame log
 - 🧠 **AI Assessment** — auto-generated match summary from aggregated stats
+- 📄 **PDF Report Generator** — one-click match reports via ReportLab
 - 🏋️ **Model Training Panel** — in-app training for ESRGAN, LSTM, and YOLOv11 fine-tuning
 
 ---
@@ -60,6 +62,14 @@ source .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python GAIze-Sport.py
 ```
+
+Login with:
+
+| Field | Value |
+|---|---|
+| Username | `admin` |
+| Password | `password` |
+
 ---
 
 ## 🎮 Usage
@@ -78,6 +88,10 @@ Click **📊 Analysis** in the sidebar to see:
 - Charts (action pie, detection density bar, frame-by-frame timeline)
 - AI-generated assessment paragraph
 - Per-frame detection log
+
+### Generating a PDF Report
+
+Click **📄 Generate Report** in the Analytics Panel — saved to `reports/match_report.pdf`.
 
 ### Model Training
 
@@ -123,15 +137,25 @@ Weights: `models/LSTM Action Recognition Model.pth`
 | `Ultralytics` | YOLOv11 pose detection |
 | `PyTorch` | LSTM & ESRGAN inference + training |
 | `NumPy / Pandas / Matplotlib` | Data + charts |
+| `ReportLab` | PDF report generation |
+| `cryptography` | Fernet file/data encryption |
 
 ---
 
 ## 🗺️ Roadmap / Future Goals
 
 - [ ] Multi-player per-entity LSTM tracking
+- [ ] Live YouTube / RTMP stream analysis
 - [ ] AI Chat widget with sports-specific fine-tuned model
 - [ ] Team possession heatmaps
 - [ ] Export annotated video with overlay
 - [ ] Web-based dashboard mode
+- [ ] Custom action class support (heading, passing, etc.)
 
 ---
+
+## 👤 Author
+
+**Viplove** — Major Project II (2026)
+
+> *Powered by PyTorch • Ultralytics • OpenCV • CustomTkinter • NumPy • Matplotlib • ReportLab • Pillow*

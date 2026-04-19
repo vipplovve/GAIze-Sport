@@ -2,7 +2,7 @@
 torch
 torchvision
 ultralytics
-transformers
+ollama
 
 # ===== Computer Vision & Image Processing =====
 opencv-python
@@ -20,8 +20,5 @@ customtkinter
 cryptography
 
 # ===== Data & Datasets =====
-SoccerNet
 scikit-learn
 
-# ===== Streaming & Media =====
-yt-dlp

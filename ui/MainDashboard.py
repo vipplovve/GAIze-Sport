@@ -113,33 +113,29 @@ class MainDashboard(ctk.CTkFrame):
         self.player_frame.grid_rowconfigure(0, weight=3)
         self.player_frame.grid_rowconfigure(1, weight=1)
         self.player_frame.grid_columnconfigure(0, weight=1)
-        self.player_frame.grid_columnconfigure(1, weight=0)
 
         self.video_player = VideoPlayerWidget(self.player_frame)
         self.video_player.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
 
-        console_frame = ctk.CTkFrame(self.player_frame, corner_radius=8)
-        console_frame.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 5))
+        bottom_panel = ctk.CTkFrame(self.player_frame, fg_color="transparent")
+        bottom_panel.grid(row=1, column=0, sticky="nsew", padx=5, pady=(0, 5))
+        bottom_panel.grid_rowconfigure(0, weight=1)
+        bottom_panel.grid_columnconfigure(0, weight=4)
+        bottom_panel.grid_columnconfigure(1, weight=1)
+
+        console_frame = ctk.CTkFrame(bottom_panel, corner_radius=8)
+        console_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 5), pady=0)
         console_frame.grid_rowconfigure(0, weight=1)
         console_frame.grid_columnconfigure(0, weight=1)
 
         self.console_dashboard = TrainingDashboard(console_frame, preset=PRESET_ANALYSIS)
         self.console_dashboard.grid(row=0, column=0, sticky="nsew", padx=3, pady=3)
 
-        right_panel = ctk.CTkFrame(self.player_frame, width=280, fg_color="transparent")
-        right_panel.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(0, 5), pady=5)
-        right_panel.grid_propagate(False)
+        minimap_frame = ctk.CTkFrame(bottom_panel, corner_radius=8)
+        minimap_frame.grid(row=0, column=1, sticky="nsew", padx=(5, 0), pady=0)
 
-        self.analysis_panel = AnalyticsPanel(right_panel, width=270, height=260)
-        self.analysis_panel.pack(fill="x", pady=(0, 5))
-        self.analysis_panel.btn_report.configure(command=self.generate_report)
-
-        self.minimap = MiniMapPanel(right_panel, width=270, height=200)
-        self.minimap.pack(fill="x", pady=5)
-
-        self.btn_calibrate = ctk.CTkButton(right_panel, text="Calibrate Pitch",
-                                            command=self.open_calibration)
-        self.btn_calibrate.pack(pady=(5, 10))
+        self.minimap = MiniMapPanel(minimap_frame, width=270, height=200)
+        self.minimap.place(relx=0.5, rely=0.5, anchor="center")
 
     def _build_training_view(self):
         self.training_frame = TrainingPanel(self.main_content)
@@ -212,6 +208,11 @@ class MainDashboard(ctk.CTkFrame):
                                    fg_color="#a83232", hover_color="#8b2828",
                                    command=self.generate_report)
         btn_report.pack(side="right", padx=10)
+
+        btn_ai_analysis = ctk.CTkButton(header, text="🧠 Analyze with AI", font=("Roboto", 13, "bold"),
+                                        fg_color="#6366f1", hover_color="#4f46e5",
+                                        command=self.analyze_with_ai)
+        btn_ai_analysis.pack(side="right", padx=10)
 
         if self.total_analyzed_frames == 0:
             empty = ctk.CTkFrame(scroll, fg_color="#1a1a2e", corner_radius=12)
@@ -464,6 +465,13 @@ class MainDashboard(ctk.CTkFrame):
         self.chat_frame.grid(row=0, column=0, sticky="nsew")
         self.current_view = "chat"
 
+    def analyze_with_ai(self):
+        self._push_analysis_to_chat()
+        self.show_chat_view()
+        self.chat_widget.entry.delete(0, "end")
+        self.chat_widget.entry.insert(0, "Can you analyze my latest video results and provide tactical insights?")
+        self.chat_widget.send_message()
+
     def show_training_view(self):
         self._hide_all_views()
         self.training_frame.grid(row=0, column=0, sticky="nsew")
@@ -506,20 +514,7 @@ class MainDashboard(ctk.CTkFrame):
         self.lbl_status.configure(text="Status: Video Loaded", text_color="green")
         self.start_analysis()
 
-    def open_calibration(self):
-        if not self.video_path:
-            messagebox.showwarning("No Video", "Load a video first before calibrating.")
-            return
 
-        cap = cv2.VideoCapture(self.video_path)
-        ret, frame = cap.read()
-        cap.release()
-
-        if ret:
-            CalibrationView(self, frame, self.on_calibration_done)
-
-    def on_calibration_done(self, points):
-        self.log_to_console("[INFO] Pitch calibration updated!")
 
 
     def start_analysis(self):
@@ -594,7 +589,6 @@ class MainDashboard(ctk.CTkFrame):
         from core.VideoAnalyticsEngine import VideoAnalyticsEngine
         import torch
         import numpy as np
-        import os
 
         config = getattr(self, "analysis_config", {})
         sport = config.get("sport", "Football")
@@ -622,7 +616,6 @@ class MainDashboard(ctk.CTkFrame):
         esrgan_out_dir = None
         if use_esrgan and esrgan_path:
             self.log_to_console(f"[INFO] Loading ESRGAN 4x model ({Path(esrgan_path).name})...")
-            sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
             from core.FrameEnhancementEngine import FrameEnhancementEngine
             esrgan_engine = FrameEnhancementEngine(model_path=esrgan_path)
             esrgan_engine.load_model()
@@ -763,11 +756,7 @@ class MainDashboard(ctk.CTkFrame):
                 else:
                     action_str = f"F{frame_count}: {action_name} | {num_detections} det"
 
-                self.analysis_panel.update_stats({
-                    "speed": round(num_detections * 3.5, 1),
-                    "possession": {"Home": 55, "Away": 45},
-                    "action": action_str
-                })
+
 
                 if all_probs:
                     al = list(all_probs.keys())
@@ -805,11 +794,36 @@ class MainDashboard(ctk.CTkFrame):
         self.analyzing = False
         self.lbl_status.configure(text="Status: Analysis Complete", text_color="green")
         self.log_to_console(f"[DONE] Analyzed {frame_count} frames. Actions: {self.action_counts}")
+        self._push_analysis_to_chat()
+
+    def _push_analysis_to_chat(self):
+        if not hasattr(self, 'chat_widget') or not self.chat_widget:
+            return
+
+        total_actions = sum(self.action_counts.values())
+        avg_det = 0
+        if self.analysis_data:
+            avg_det = sum(d["detections"] for d in self.analysis_data.values()) / max(len(self.analysis_data), 1)
+
+        lines = [
+            f"Sport: {self.sport}",
+            f"Video: {Path(self.video_path).name if self.video_path else 'Unknown'}",
+            f"Total Frames Analyzed: {self.total_analyzed_frames}",
+            f"Average Persons Detected per Frame: {avg_det:.1f}",
+        ]
+
+        if total_actions > 0:
+            lines.append("Action Counts:")
+            for action, count in self.action_counts.items():
+                pct = int(count / total_actions * 100)
+                lines.append(f"  {action}: {count} frames ({pct}%)")
+
+            active = sum(v for k, v in self.action_counts.items() if k != "Idle")
+            lines.append(f"Activity Rate (non-Idle): {int(active / total_actions * 100)}%")
+
+        self.chat_widget.set_analysis_context("\n".join(lines))
 
     def generate_report(self):
-        from tkinter import messagebox, filedialog
-        import os
-        
         if self.total_analyzed_frames == 0:
             messagebox.showwarning("No Data", "Analyze a video first before generating a report.")
             return
